@@ -8,12 +8,33 @@ Called by Claude Code hooks:
   session-logger.py tool   — PostToolUse
   session-logger.py stop   — Stop
 """
-import fcntl
 import json
 import os
 import pathlib
 import sys
 from datetime import datetime
+
+# fcntl is POSIX-only (macOS, Linux). On Windows it raises ImportError,
+# which crashes the hook before any logging occurs. The shim below
+# provides no-op locking on platforms that don't support fcntl so the
+# logger degrades gracefully. The only risk is a rare race condition on
+# the session map when multiple Claude Code sessions start simultaneously.
+try:
+    import fcntl
+
+    def _lock_ex(f):
+        fcntl.flock(f, fcntl.LOCK_EX)
+
+    def _unlock(f):
+        fcntl.flock(f, fcntl.LOCK_UN)
+
+except ImportError:
+    def _lock_ex(f):
+        pass
+
+    def _unlock(f):
+        pass
+
 
 LOG_DIR = pathlib.Path.home() / ".claude" / "logs"
 SESSION_MAP = LOG_DIR / ".session_map.json"
@@ -37,7 +58,7 @@ def _update_session_map(fn):
     """Call fn(map) -> map under an exclusive lock, then persist."""
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     with open(SESSION_MAP_LOCK, "w") as lf:
-        fcntl.flock(lf, fcntl.LOCK_EX)
+        _lock_ex(lf)
         try:
             m = {}
             if SESSION_MAP.exists():
@@ -48,7 +69,7 @@ def _update_session_map(fn):
             m = fn(m)
             SESSION_MAP.write_text(json.dumps(m, indent=2))
         finally:
-            fcntl.flock(lf, fcntl.LOCK_UN)
+            _unlock(lf)
 
 
 def _prune(m: dict) -> dict:
@@ -119,11 +140,11 @@ def _append(log: pathlib.Path, record: dict) -> None:
     record.setdefault("ts", now_iso())
     line = json.dumps(record) + "\n"
     with open(log, "a") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+        _lock_ex(f)
         try:
             f.write(line)
         finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+            _unlock(f)
 
 
 # ---------------------------------------------------------------------------
