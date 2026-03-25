@@ -1,19 +1,42 @@
 #!/usr/bin/env python3
 """
 Claude Code session logger hook.
+Original: https://github.com/nazuraki/claude/tree/main/session-logger-plugin
 
 Called by Claude Code hooks:
-  session-logger.py prompt — UserPromptSubmit
-  session-logger.py pre    — PreToolUse
-  session-logger.py tool   — PostToolUse
-  session-logger.py stop   — Stop
+    session-logger.py prompt  -- UserPromptSubmit
+    session-logger.py pre     -- PreToolUse
+    session-logger.py tool    -- PostToolUse
+    session-logger.py stop    -- Stop
 """
-import fcntl
+
 import json
 import os
 import pathlib
 import sys
 from datetime import datetime
+
+# fcntl is POSIX-only (macOS, Linux). On Windows it raises ImportError,
+# which crashes the hook before any logging occurs. The shim below
+# provides no-op locking on platforms that don't support fcntl so the
+# logger degrades gracefully. The only risk is a rare race condition on
+# the session map when multiple Claude Code sessions start simultaneously.
+try:
+    import fcntl
+
+    def _lock_ex(f):
+        fcntl.flock(f, fcntl.LOCK_EX)
+
+    def _unlock(f):
+        fcntl.flock(f, fcntl.LOCK_UN)
+
+except ImportError:
+    def _lock_ex(f):
+        pass
+
+    def _unlock(f):
+        pass
+
 
 LOG_DIR = pathlib.Path.home() / ".claude" / "logs"
 SESSION_MAP = LOG_DIR / ".session_map.json"
@@ -30,14 +53,14 @@ def now_iso() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Session map — exclusive-locked read/modify/write
+# Session map -- exclusive-locked read/modify/write
 # ---------------------------------------------------------------------------
 
 def _update_session_map(fn):
     """Call fn(map) -> map under an exclusive lock, then persist."""
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     with open(SESSION_MAP_LOCK, "w") as lf:
-        fcntl.flock(lf, fcntl.LOCK_EX)
+        _lock_ex(lf)
         try:
             m = {}
             if SESSION_MAP.exists():
@@ -48,7 +71,7 @@ def _update_session_map(fn):
             m = fn(m)
             SESSION_MAP.write_text(json.dumps(m, indent=2))
         finally:
-            fcntl.flock(lf, fcntl.LOCK_UN)
+            _unlock(lf)
 
 
 def _prune(m: dict) -> dict:
@@ -86,14 +109,12 @@ def get_or_create_log(session_id: str) -> pathlib.Path:
 
     _update_session_map(update)
     log = pathlib.Path(result["path"])
-
     if is_new:
         _append(log, {
             "event": "session_start",
             "session_id": session_id,
             "cwd": os.getcwd(),
         })
-
     return log
 
 
@@ -112,18 +133,18 @@ def get_existing_log(session_id: str) -> "pathlib.Path | None":
 
 
 # ---------------------------------------------------------------------------
-# JSONL append — locked per file
+# JSONL append -- locked per file
 # ---------------------------------------------------------------------------
 
 def _append(log: pathlib.Path, record: dict) -> None:
     record.setdefault("ts", now_iso())
     line = json.dumps(record) + "\n"
     with open(log, "a") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+        _lock_ex(f)
         try:
             f.write(line)
         finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+            _unlock(f)
 
 
 # ---------------------------------------------------------------------------
@@ -133,7 +154,7 @@ def _append(log: pathlib.Path, record: dict) -> None:
 def display_tool(tool_name: str) -> str:
     """Human-readable tool name. Strips mcp__ prefix."""
     if tool_name.startswith("mcp__"):
-        # mcp__server__method  ->  server.method
+        # mcp__server__method -> server.method
         parts = tool_name.split("__", 2)
         return f"{parts[1]}.{parts[2]}" if len(parts) == 3 else tool_name[5:]
     return tool_name
@@ -217,7 +238,6 @@ def handle_tool(data: dict) -> None:
 def handle_stop(data: dict) -> None:
     session_id = data.get("session_id", "unknown")
     log = get_existing_log(session_id) or get_or_create_log(session_id)
-
     pre_count = post_count = errors = prompts = 0
     if log.exists():
         for raw in log.read_text().splitlines():
@@ -234,7 +254,6 @@ def handle_stop(data: dict) -> None:
                     errors += 1
             elif ev == "prompt":
                 prompts += 1
-
     _append(log, {
         "event": "session_end",
         "session_id": session_id,
