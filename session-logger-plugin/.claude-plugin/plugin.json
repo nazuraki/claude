@@ -1,0 +1,8 @@
+{
+  "name": "session-logger",
+  "description": "Logs Claude Code session activity (prompts, tool calls, errors) to JSONL files in ~/.claude/logs/",
+  "version": "1.0.0",
+  "author": {
+    "name": "nazuraki"
+  }
+}
