@@ -9,8 +9,16 @@ Each session gets a timestamped log file with events:
 
 ## Install via plugin system
 
+Add the marketplace (once):
+
 ```sh
-/plugin install session-logger
+claude plugin marketplace add nazuraki/claude
+```
+
+Install the plugin:
+
+```sh
+claude plugin install session-logger@nazuraki-claude-plugins
 ```
 
 ## Manual install (symlink, for development)

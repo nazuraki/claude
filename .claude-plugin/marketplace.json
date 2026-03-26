@@ -1,0 +1,17 @@
+{
+  "name": "nazuraki-claude-plugins",
+  "owner": {
+    "name": "nazuraki"
+  },
+  "metadata": {
+    "description": "Collection of Claude Code plugins by nazuraki"
+  },
+  "plugins": [
+    {
+      "name": "session-logger",
+      "description": "Logs Claude Code session activity (prompts, tool calls, errors) to JSONL files in ~/.claude/logs/",
+      "category": "development",
+      "source": "./session-logger-plugin"
+    }
+  ]
+}
