@@ -77,6 +77,38 @@ dev:
     pnpm --filter <package> dev
 ```
 
+**Docker recipes** (containerized apps only) — insert after `build`:
+
+```just
+# Build Docker image
+docker-build:
+    docker build -t <image-name> .
+
+# Run Docker container locally
+docker-run:
+    docker run --env-file .env -p <port>:<port> <image-name>
+
+# Push image to registry
+docker-push:
+    docker push <registry>/<image-name>
+```
+
+**Deploy recipe** (deployable apps only) — insert after Docker recipes (or after `build` if no Docker):
+
+```just
+# Deploy to production
+deploy: build
+    <deploy command>
+```
+
+For staging environments, add a separate recipe immediately after `deploy`:
+
+```just
+# Deploy to staging
+deploy-staging: build
+    <staging deploy command>
+```
+
 ## Naming Rules
 
 - `lint` = **read-only** (never modifies files)
@@ -99,6 +131,8 @@ dev:
 - Omit `test` from `check` dependencies only if the project has no tests
 - Omit `run` for libraries and pure build tools
 - Omit `build` for projects with no build step
+- Omit `docker-build`, `docker-run`, `docker-push` for non-containerized projects
+- Omit `deploy` / `deploy-staging` for libraries and projects with no deployment target
 - Always include `clean` and `fresh` — cheap and consistently expected
 
 ## Package Manager Rules
