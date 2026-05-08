@@ -127,6 +127,22 @@ Run the check command. If it fails:
 
 Do not open a PR until all checks pass.
 
+## Step 8b — Verify clean working tree
+
+Run:
+```sh
+git status --short
+```
+
+If there are uncommitted changes or untracked files:
+
+1. For **modified/deleted tracked files**: commit them. If they're part of the implementation, add to the most appropriate existing commit scope (or a new commit if logically distinct). Follow Conventional Commits.
+2. For **untracked files**: determine whether each belongs in `.gitignore` (build artifacts, tooling output, secrets, OS/editor noise) or should be committed as part of the implementation.
+   - If it belongs in `.gitignore`, add the pattern and commit the `.gitignore` change.
+   - If it should be committed, stage and commit it with a proper message.
+
+Re-run `git status --short` and repeat until the working tree is clean. Do not open a PR with a dirty working tree.
+
 ## Step 9 — Open PR
 
 ```sh
