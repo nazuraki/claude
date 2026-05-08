@@ -32,7 +32,17 @@ Run:
 git status --short
 ```
 
-If there are any uncommitted changes or untracked files, stop and tell the user what's dirty. Do not proceed.
+If there are **uncommitted changes** (modified or deleted tracked files), stop and tell the user what's dirty. Do not proceed.
+
+If there are **untracked files**, handle them before proceeding:
+
+1. List the untracked files to the user.
+2. Check the current `.gitignore` and look at the file names/paths to determine whether each file is a build artifact, tooling output, secret, or OS/editor noise that should be ignored rather than committed (e.g. `.env`, `node_modules/`, `dist/`, `.DS_Store`, `*.log`, `__pycache__/`).
+3. If any untracked files clearly belong in `.gitignore`, add appropriate patterns to `.gitignore` and tell the user what you added.
+4. Re-run `git status --short`. If the repo is now clean, continue. If untracked files remain (files that are legitimately new and should be committed, or whose disposition is unclear), stop and tell the user:
+   > Untracked files remain. Either commit them, delete them, or add them to `.gitignore` before starting a new issue.
+
+Do not proceed until `git status --short` shows a clean working tree.
 
 ## Step 2 — Update main
 
