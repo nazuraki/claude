@@ -99,3 +99,54 @@ Insert after Docker recipes (or after `build` if no Docker):
 - **Jobs:** lint (runs first), test (runs after lint passes)
 - **Action versions:** pinned to a specific tag — no `@latest`; `actions/checkout` must be `v6` or newer; use the most recent stable version available for all other actions
 - **Test matrix:** multi-platform or multi-version matrix where the runtime warrants it
+
+---
+
+## GitHub repository settings
+
+### Merge strategy
+
+- Merge commits: **disabled**
+- Rebase merging: **disabled**
+- Squash merging: **enabled**, default commit message set to **PR title**
+
+### Branch management
+
+- Suggest updating PR branches: **enabled**
+- Automatically delete head branches after merge: **enabled**
+
+### Branch protection (main)
+
+- Require a pull request before merging
+- Require CI status checks to pass before merging
+
+### Labels
+
+Required labels (Conventional Commits + triage):
+
+| Label | Purpose |
+|-------|---------|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `chore` | Chore / maintenance |
+| `docs` | Documentation |
+| `refactor` | Code refactor |
+| `test` | Tests |
+| `perf` | Performance improvement |
+| `ci` | CI/CD |
+| `build` | Build system |
+| `style` | Code style |
+| `revert` | Revert |
+| `priority` | High priority |
+| `nice to have` | Low priority |
+| `wontfix` | Won't fix |
+
+Labels that must **not** exist: `good first issue`, `help wanted`
+
+### Social preview
+
+- A social preview image must be set (configured in GitHub repo Settings → Social preview)
+
+### Webhooks
+
+- Nazu reindexing webhook must be registered

@@ -1,6 +1,6 @@
 ---
 name: project-standards
-description: "Audit ALL GitHub repos against the full project standards — file content AND repository settings. Use this skill when the user asks to audit all projects, check standards across repos, run a multi-repo compliance check, or apply fixes across repositories. Trigger on phrases like 'audit all projects', 'check all repos', 'project standards across all repos', '/project-standards', or 'iterate over all projects'."
+description: "Invoked via /project-standards only."
 ---
 
 # Project Standards — Multi-Repo Audit
