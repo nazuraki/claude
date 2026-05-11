@@ -71,46 +71,31 @@ Parse `owner/repo` from the URL. If no remote exists, skip all GitHub settings c
 #### .github/workflows/ci.yml
 
 - File exists (check for any `.github/workflows/*.yml` if the exact name differs)
-- Triggers on `push` to `main` and all pull requests
-- Has at least two jobs: lint (runs first) and test (runs after lint)
+- Triggers on `pull_request` events (PR open and update) — this is the critical gate
+- Also triggers on `push` to `main`
+- Has at least two jobs covering lint/typecheck and tests
 - All action versions are pinned to a specific tag (not `@latest`)
 - `actions/checkout` is v6 or newer
 - Has a multi-platform or multi-version test matrix where the runtime warrants it
 
 #### GitHub repository settings
 
-Fetch base settings:
+Fetch base settings and social preview in one batch:
 ```sh
 gh api repos/{owner}/{repo}
+gh api graphql -f query='{ repository(owner: "{owner}", name: "{repo}") { usesCustomOpenGraphImage } }'
 ```
 
 Check:
 
-| Field | Expected |
-|-------|----------|
-| `allow_merge_commit` | `false` |
-| `allow_rebase_merge` | `false` |
-| `squash_merge_commit_title` | `"PR_TITLE"` |
-| `allow_update_branch` | `true` |
-| `delete_branch_on_merge` | `true` |
-| `social_preview_url` | non-null |
-
-Fetch branch protection:
-```sh
-gh api repos/{owner}/{repo}/branches/main/protection 2>/dev/null || echo "NOT_PROTECTED"
-```
-
-Check:
-- Required PR before merging (`required_pull_request_reviews` exists)
-- Required status checks (`required_status_checks.contexts` non-empty)
-
-Fetch webhooks:
-```sh
-gh api repos/{owner}/{repo}/hooks
-```
-
-Check:
-- At least one webhook present (nazu reindexing hook). If the webhook URL is unknown, flag as UNKNOWN rather than FAIL.
+| Source | Field | Expected |
+|--------|-------|----------|
+| REST | `allow_merge_commit` | `false` |
+| REST | `allow_rebase_merge` | `false` |
+| REST | `squash_merge_commit_title` | `"PR_TITLE"` |
+| REST | `allow_update_branch` | `true` |
+| REST | `delete_branch_on_merge` | `true` |
+| GraphQL | `usesCustomOpenGraphImage` | `true` |
 
 Fetch labels:
 ```sh
@@ -167,9 +152,6 @@ Audited: <absolute path>
 - OK   Suggest branch updates
 - FAIL Auto-delete head branches (disabled)
 - FAIL Social preview image (not set)
-- OK   Branch protection — PR required
-- FAIL Branch protection — CI status checks required
-- FAIL Nazu reindexing webhook (UNKNOWN)
 
 ### Labels                       [PASS | FAIL | N/A]
 - FAIL Missing: perf, ci, style
@@ -236,8 +218,6 @@ gh api repos/{owner}/{repo}/labels/help%20wanted --method DELETE 2>/dev/null
 
 **Manual only:**
 - Social preview — must be uploaded via GitHub Settings → Social preview
-- Nazu webhook — prompt user for the webhook URL, then create with `gh api repos/{owner}/{repo}/hooks --method POST`
-- Branch protection — prompt user for required CI job names, then apply via `gh api repos/{owner}/{repo}/branches/main/protection --method PUT`
 
 After fixing, re-audit only the changed areas and confirm they now pass.
 
