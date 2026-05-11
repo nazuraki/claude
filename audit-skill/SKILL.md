@@ -117,12 +117,20 @@ Fetch labels:
 gh api repos/{owner}/{repo}/labels --paginate
 ```
 
-**Required labels:** `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `ci`, `build`, `style`, `revert`, `priority`, `nice to have`, `wontfix`
+**Required labels:** `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `ci`, `build`, `style`, `revert`, `priority`, `nice to have`, `wontfix`, `question`, `invalid`
 
 **Forbidden labels:** `good first issue`, `help wanted`
 
+**Legacy labels to rename** (count as present if found, but flag for rename in fix mode):
+
+| Existing name | Rename to |
+|--------------|-----------|
+| `feature` | `feat` |
+| `bug` | `fix` |
+| `documentation` | `docs` |
+
 Check:
-- All required labels present
+- All required labels present (legacy names count as satisfying the requirement but are flagged for rename)
 - Neither forbidden label present
 
 ### Step 3 — Produce the report
@@ -194,22 +202,30 @@ gh api repos/{owner}/{repo} \
   --field delete_branch_on_merge=true
 ```
 
-**Labels** — create missing required labels:
+**Labels** — rename legacy labels first, then create any still missing:
 ```sh
-gh label create "feat"        --repo {owner}/{repo} --color 0075ca --description "New feature (Conventional Commits: feat)"
-gh label create "fix"         --repo {owner}/{repo} --color d73a4a --description "Bug fix (Conventional Commits: fix)"
-gh label create "chore"       --repo {owner}/{repo} --color e4e669 --description "Chore (Conventional Commits: chore)"
-gh label create "docs"        --repo {owner}/{repo} --color 0075ca --description "Documentation (Conventional Commits: docs)"
-gh label create "refactor"    --repo {owner}/{repo} --color bfd4f2 --description "Code refactor (Conventional Commits: refactor)"
-gh label create "test"        --repo {owner}/{repo} --color bfd4f2 --description "Tests (Conventional Commits: test)"
-gh label create "perf"        --repo {owner}/{repo} --color bfd4f2 --description "Performance improvement (Conventional Commits: perf)"
-gh label create "ci"          --repo {owner}/{repo} --color bfd4f2 --description "CI/CD (Conventional Commits: ci)"
-gh label create "build"       --repo {owner}/{repo} --color bfd4f2 --description "Build system (Conventional Commits: build)"
-gh label create "style"       --repo {owner}/{repo} --color bfd4f2 --description "Code style (Conventional Commits: style)"
-gh label create "revert"      --repo {owner}/{repo} --color e4e669 --description "Revert (Conventional Commits: revert)"
-gh label create "priority"    --repo {owner}/{repo} --color b60205 --description "High priority"
-gh label create "nice to have" --repo {owner}/{repo} --color c5def5 --description "Low priority, would be nice"
-gh label create "wontfix"     --repo {owner}/{repo} --color ffffff --description "Won't fix"
+# Rename legacy labels (preserves existing issues/PRs tagged with them)
+gh api repos/{owner}/{repo}/labels/feature       --method PATCH --field name=feat          --field description="New feature (Conventional Commits: feat)" 2>/dev/null
+gh api repos/{owner}/{repo}/labels/bug           --method PATCH --field name=fix           --field description="Bug fix (Conventional Commits: fix)" 2>/dev/null
+gh api repos/{owner}/{repo}/labels/documentation --method PATCH --field name=docs          --field description="Documentation (Conventional Commits: docs)" 2>/dev/null
+
+# Create missing required labels
+gh label create "feat"         --repo {owner}/{repo} --color 0075ca --description "New feature (Conventional Commits: feat)"         --force
+gh label create "fix"          --repo {owner}/{repo} --color d73a4a --description "Bug fix (Conventional Commits: fix)"               --force
+gh label create "chore"        --repo {owner}/{repo} --color e4e669 --description "Chore (Conventional Commits: chore)"               --force
+gh label create "docs"         --repo {owner}/{repo} --color 0075ca --description "Documentation (Conventional Commits: docs)"        --force
+gh label create "refactor"     --repo {owner}/{repo} --color bfd4f2 --description "Code refactor (Conventional Commits: refactor)"    --force
+gh label create "test"         --repo {owner}/{repo} --color bfd4f2 --description "Tests (Conventional Commits: test)"                --force
+gh label create "perf"         --repo {owner}/{repo} --color bfd4f2 --description "Performance improvement (Conventional Commits: perf)" --force
+gh label create "ci"           --repo {owner}/{repo} --color bfd4f2 --description "CI/CD (Conventional Commits: ci)"                  --force
+gh label create "build"        --repo {owner}/{repo} --color bfd4f2 --description "Build system (Conventional Commits: build)"        --force
+gh label create "style"        --repo {owner}/{repo} --color bfd4f2 --description "Code style (Conventional Commits: style)"          --force
+gh label create "revert"       --repo {owner}/{repo} --color e4e669 --description "Revert (Conventional Commits: revert)"             --force
+gh label create "priority"     --repo {owner}/{repo} --color b60205 --description "High priority"                                     --force
+gh label create "nice to have" --repo {owner}/{repo} --color c5def5 --description "Low priority, would be nice"                      --force
+gh label create "wontfix"      --repo {owner}/{repo} --color ffffff --description "Won't fix"                                         --force
+gh label create "question"     --repo {owner}/{repo} --color d876e3 --description "Further information requested"                     --force
+gh label create "invalid"      --repo {owner}/{repo} --color e4e669 --description "This doesn't seem right"                          --force
 ```
 
 Delete forbidden labels:
