@@ -102,7 +102,17 @@ Fetch labels:
 gh api repos/{owner}/{repo}/labels --paginate
 ```
 
-**Required labels:** `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `ci`, `build`, `style`, `revert`, `priority`, `nice to have`, `wontfix`, `question`, `invalid`
+**Required labels:** `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `ci`, `build`, `style`, `revert`, `priority`, `nice to have`, `wontfix`, `question`, `invalid`, `XS`, `S`, `M`, `L`, `XL`
+
+**Effort labels (t-shirt sizes):**
+
+| Label | Meaning |
+|-------|---------|
+| `XS` | Minor update with no code impact (e.g., docs typo, comment fix) |
+| `S`  | Small, localized change to a single file or function |
+| `M`  | Moderate change spanning a few files within one area |
+| `L`  | Large change across multiple areas or subsystems |
+| `XL` | Project-wide impact (e.g., tooling change, switch to monorepo, major refactor) |
 
 **Forbidden labels:** `good first issue`, `help wanted`
 
@@ -208,6 +218,13 @@ gh label create "nice to have" --repo {owner}/{repo} --color c5def5 --descriptio
 gh label create "wontfix"      --repo {owner}/{repo} --color ffffff --description "Won't fix"                                         --force
 gh label create "question"     --repo {owner}/{repo} --color d876e3 --description "Further information requested"                     --force
 gh label create "invalid"      --repo {owner}/{repo} --color e4e669 --description "This doesn't seem right"                          --force
+
+# Effort (t-shirt size) labels
+gh label create "XS"           --repo {owner}/{repo} --color c2e0c6 --description "Effort: minor update with no code impact (e.g., docs)" --force
+gh label create "S"            --repo {owner}/{repo} --color a2eeef --description "Effort: small, localized change"                       --force
+gh label create "M"            --repo {owner}/{repo} --color fbca04 --description "Effort: moderate change across a few files"           --force
+gh label create "L"            --repo {owner}/{repo} --color d93f0b --description "Effort: large change across multiple areas"           --force
+gh label create "XL"           --repo {owner}/{repo} --color b60205 --description "Effort: project-wide impact (e.g., tooling, monorepo)" --force
 ```
 
 Delete forbidden labels:
