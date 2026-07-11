@@ -41,24 +41,27 @@ Process subagent logs the same way and nest them under their parent tool call.
 Check each pattern below. For every finding, record the turn number(s), what happened, and what should have happened.
 
 ### Routing violations
-- **Read for analysis**: Read tool used on a file that was never subsequently edited → should have used `ctx_execute_file` (context-mode) or `get_file_outline`/`get_symbol_source` (jCodeMunch)
-- **Grep flood**: Grep returning >50 lines of content output → should have used `ctx_execute` with shell grep, or `search_symbols` (jCodeMunch), or GitNexus query
-- **Bash for search**: Bash running `grep`, `rg`, `find`, `cat`, `head`, `tail` → should have used dedicated tools
-- **WebFetch used**: Should have been `ctx_fetch_and_index`
-- **Raw curl/wget in Bash**: Should have been `ctx_fetch_and_index` or `ctx_execute`
-- **Read on large file without offset/limit**: Files >500 lines read in full when only a portion was needed
+- **Bash/PowerShell for search**: shell running `grep`, `rg`, `find`, `cat`, `head`, `tail`, `ls`, `Select-String`, `Get-Content`, `Get-ChildItem -Recurse` as the *primary* intent → should have used the Grep, Glob, or Read tool. Note: `… | tail -N` / `| head -N` piped onto a legitimate command (git, luacheck, busted, a build) is fine — only flag when search/read *is* the command.
+- **Wrong shell for the job**: Unix syntax pushed through the PowerShell tool, or PowerShell/here-string syntax pushed through the Bash tool. Per CLAUDE.md, keep each shell's idioms in its own tool (Git Bash for git/gh/lua/build; PowerShell for Windows-native file/text ops).
+- **Grep flood**: Grep with `output_mode: "content"` returning >50 lines → should have narrowed with `glob`/`type`, used `head_limit`, or used `files_with_matches`/`count` mode first to locate before pulling content.
+- **Read on large file without offset/limit**: files >500 lines read in full when only a portion was needed → Read with `offset`/`limit`, or Grep to the relevant line first.
+- **Raw curl/wget in Bash for web content**: should have been the WebFetch tool (or WebSearch for discovery).
+- **Manual API guessing for WoW code**: hand-searching Blizzard API behavior instead of the `mcp__wow-api__*` tools (`lookup_api`, `search_api`, `get_namespace`, `get_widget_methods`, `get_event`, `get_enum`, `list_deprecated`) when working on suite addons.
+- **Manual `gh`/git-forge poking where MCP is cleaner**: multi-step issue/PR/repo queries done as raw `gh` loops when a `mcp__…github…__*` tool (list_issues, search_issues, pull_request_read, etc.) is one call. (Simple one-shot `gh` calls are fine.)
 
 ### Redundant work
-- **Same file read multiple times**: without edits in between
-- **Repeated similar Grep/Glob**: patterns that overlap or could be combined
-- **Agent spawned for simple lookup**: single Grep/Glob would have sufficed
-- **Sequential tool calls that could batch**: multiple `ctx_execute` or `ctx_search` calls that could have been one `ctx_batch_execute`
+- **Same file read multiple times**: without edits in between (iterative edit-then-reread is fine; flag pure re-reads).
+- **Repeated similar Grep/Glob**: patterns that overlap or could be combined into one.
+- **Agent spawned for a simple lookup**: an Explore/general-purpose subagent used where a single Grep/Glob would have sufficed.
+- **Broad sweep done inline instead of delegated**: many Read/Grep calls fanning across files to answer one question → the Explore agent returns just the conclusion without dumping every file into the main context.
+- **Independent tool calls not batched in one message**: sequential calls with no data dependency (e.g. several Reads, or a Grep + a Glob) that should have been issued in a single assistant turn to run in parallel.
 
 ### Missed opportunities
-- **Impact analysis not done before edit**: Edit on a function/class without prior `get_blast_radius` (GitNexus or jCodeMunch) when the change touched shared code
-- **No outline before deep-dive**: Jumped straight to reading full files without `get_file_outline` or `get_repo_outline`
-- **Token-heavy context assembly**: Multiple Read calls to build context that `get_ranked_context` (jCodeMunch) could have done in one call with a token budget
-- **Dead code left untouched**: Deleted or refactored code without checking for dead references via `find_dead_code`
+- **No skill used where one fits**: manual work that an available skill automates — e.g. commit/merge done by hand instead of via `git-commit-safety`/`pr`, an issue worked without `work-on`, a standards check without `audit`.
+- **Impact analysis skipped before edit**: editing a shared function/class/`ns` field without first Grepping for its call sites when the change could ripple across files.
+- **No locate-before-deep-dive**: jumping straight to full-file Reads without a Grep/Glob (or Explore agent) to find the right file/lines first.
+- **Dead code left untouched**: refactored or deleted code without Grepping for remaining references.
+- **Question left to guess instead of asked**: proceeded on an ambiguous, user-owned decision where AskUserQuestion was warranted (or, conversely, asked when a sensible default existed).
 
 ### Token waste
 - **Large tool outputs**: any single tool result >10KB entering context
@@ -71,7 +74,15 @@ Check each pattern below. For every finding, record the turn number(s), what hap
 
 ## Step 4 — Generate report
 
-Write the report to a file: `session-analysis-<short-uuid>.md` in the current working directory.
+Write the report to the **session-analysis directory**, NEVER into a project/code repo (a session-analysis file must never show up in `git status`):
+
+```
+R:\repos\artifacts\Analysis\<project>-session-analysis-<short-uuid>-<YYYY-MM-DD>.md
+```
+
+e.g. `wow-session-analysis-b22ec335-2026-07-08.md`. Use the encoded-project-path stem (e.g. `wow`) as the `<project>` prefix to match the existing `wow-*` naming. Do not write to the current working directory.
+
+Files in this directory are pruned automatically: a Windows scheduled task (`ClaudeAnalysisCleanup`, script at `R:\repos\Tooling\PowerShell\Cleanup-AnalysisArtifacts.ps1`) deletes anything older than 30 days each day. Treat these reports as ephemeral — anything worth keeping long-term belongs in a memory file, not here.
 
 Structure:
 
@@ -112,12 +123,14 @@ Structure:
 ## Token Budget
 | Category | Tokens | % of Total |
 |----------|--------|------------|
-| Tool I/O | | |
-| Thinking | | |
-| Cache creation | | |
 | Cache reads | | |
+| Cache creation | | |
 | Output | | |
+| Input (fresh) | | |
+| **Total** | | |
 ```
+
+Pull each row straight from the summed `message.usage` fields: `cache_read_input_tokens`, `cache_creation_input_tokens`, `output_tokens`, `input_tokens`. A high cache-read share is the cache **working**, not waste — call that out so a big total isn't misread as overspend. Real "fresh" cost = output + input + cache creation.
 
 ## Step 5 — Present to user
 
