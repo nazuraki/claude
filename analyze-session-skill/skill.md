@@ -12,7 +12,7 @@ Analyze a Claude Code session log to identify inefficient, redundant, or misrout
 The user may provide:
 - A session UUID or log file path
 - "last session" or "current session" (resolve from `~/.claude/projects/`)
-- No argument (default to most recent completed session)
+- No argument → default to the **current** session when it contains substantive tool use (the usual case: the user invokes this right after the work they want reviewed). Fall back to the most recent *completed* session only if the current one is empty or has no real tool activity yet.
 
 ## Step 1 — Locate the log
 
@@ -21,20 +21,32 @@ Session logs live at:
 ~/.claude/projects/<encoded-project-path>/<session-uuid>.jsonl
 ```
 
-If the user said "last session", find the most recent `.jsonl` by modification time in the project directory matching the current working directory. Exclude the current session ID if still active.
+**When the target session ID is known — go straight to the path; don't enumerate.** The current session's UUID is embedded in the environment (e.g. the scratchpad path), and an explicit UUID/path may be given. In those cases construct the `.jsonl` path directly, or scope the Glob to that stem (`<uuid>*`). Do NOT Glob the whole project dir — it can return hundreds of logs (a large, useless result).
 
-Also check for subagent logs in `<session-uuid>/subagents/*.jsonl`.
+Only when you must *discover* which session to use (e.g. "last session" with no ID) enumerate by modification time, and even then narrow to the most recent handful. For "last session", exclude the current session ID if it's still active; for the no-argument default, the current session is the intended target (see Invocation).
+
+Also check for subagent logs in `<session-uuid>/subagents/*.jsonl` — scope that Glob to the session's own stem, not the whole tree.
 
 ## Step 2 — Parse and extract tool events
 
-Read the JSONL file. For each line, extract:
-- **assistant messages** (`type: "assistant"`): look at `message.content[]` for blocks where `type == "tool_use"` — capture `name`, `input`, and the `message.usage` token counts
-- **user messages** (`type: "user"`): when `toolUseResult` is present, capture the tool result status and content length
-- **system messages** (`type: "system"`): capture hook summaries, errors, denied tools
+**Do NOT `Read` the raw `.jsonl` into context.** Session logs are dominated by deferred-tool and skill-listing attachment blobs on the first several lines — often >100K tokens even for a short 5-turn session — so a raw `Read` burns context on near-zero signal and truncates before it reaches the actual tool events. Parse programmatically instead.
 
-Build a timeline of: `[turn_number, tool_name, input_summary, output_size, tokens_used, status]`
+Run the bundled parser, which strips the blob noise and prints the tool timeline, system/hook events, and summed `message.usage` token totals:
 
-Process subagent logs the same way and nest them under their parent tool call.
+```
+python "<skill-dir>/parse_session.py" "<path-to-session>.jsonl"
+```
+
+`<skill-dir>` is this skill's own directory (on this machine: `C:\Users\roshn\.claude\skills\analyze-session`). Extend the script if a session needs a field it doesn't yet extract. Only `Read` narrow, known line ranges (`offset`/`limit`) if you must inspect one specific event verbatim.
+
+The parser extracts, per line:
+- **assistant messages** (`type: "assistant"`): `message.content[]` blocks where `type == "tool_use"` — `name`, an `input` summary, and the `message.usage` token counts (plus `thinking`/`text` block sizes)
+- **user messages** (`type: "user"`): when `toolUseResult` is present, the tool result status and content size
+- **system messages** (`type: "system"`): hook summaries, errors, denied tools
+
+From that, build a timeline of: `[turn_number, tool_name, input_summary, output_size, tokens_used, status]`.
+
+Process subagent logs (`<session-uuid>/subagents/*.jsonl`) the same way — run the parser on each — and nest them under their parent tool call.
 
 ## Step 3 — Analyze for inefficiencies
 
@@ -65,7 +77,7 @@ Check each pattern below. For every finding, record the turn number(s), what hap
 
 ### Token waste
 - **Large tool outputs**: any single tool result >10KB entering context
-- **Thinking tokens disproportionate**: thinking tokens >3x output tokens on simple tasks
+- **Thinking tokens disproportionate**: thinking tokens >3x output tokens on simple tasks. *Caveat*: Claude Code logs do not store replayable thinking text, so per-block thinking size is not recoverable — the parser flags such blocks `redacted (size not logged)` and this check is effectively N/A from a log alone. Extended-thinking cost is already folded into `output_tokens`.
 - **Cache miss patterns**: low `cache_read_input_tokens` relative to `cache_creation_input_tokens` across turns
 
 ### Hook/enforcement failures
