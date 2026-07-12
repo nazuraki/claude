@@ -21,7 +21,9 @@ Session logs live at:
 ~/.claude/projects/<encoded-project-path>/<session-uuid>.jsonl
 ```
 
-**When the target session ID is known — go straight to the path; don't enumerate.** The current session's UUID is embedded in the environment (e.g. the scratchpad path), and an explicit UUID/path may be given. In those cases construct the `.jsonl` path directly, or scope the Glob to that stem (`<uuid>*`). Do NOT Glob the whole project dir — it can return hundreds of logs (a large, useless result).
+**When the target session ID is known — go straight to the path; don't enumerate.** Both the UUID *and* the `<encoded-project-path>` are sitting in the scratchpad path in your environment: `…\Temp\claude\<encoded-project-path>\<session-uuid>\scratchpad`. The `<encoded-project-path>` is the working directory with path separators replaced by `-` — and **in a git-worktree session it is the _worktree_ path, not the base repo** (e.g. `R--repos-Tooling--claude-worktrees-<name>`, NOT `R--repos-Tooling`). Derive the stem from the scratchpad path rather than guessing the base repo; then construct `~/.claude/projects/<encoded-project-path>/<uuid>.jsonl` and it's a straight Read — no search at all.
+
+If that constructed path misses (or you were handed only a bare UUID), fall back to a **UUID-stem-scoped Glob**: `Glob pattern="**/<uuid>*.jsonl" path="~/.claude/projects"`. A UUID is unique, so this returns ~1 file — it does NOT flood. Never reach for shell `find -name` here: it yields no clickable results and trips the search-route hook (`find` filename-search is exactly a Glob job). And do NOT Glob the whole project dir with `*.jsonl` — that can return hundreds of logs (a large, useless result).
 
 Only when you must *discover* which session to use (e.g. "last session" with no ID) enumerate by modification time, and even then narrow to the most recent handful. For "last session", exclude the current session ID if it's still active; for the no-argument default, the current session is the intended target (see Invocation).
 
