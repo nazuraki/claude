@@ -31,6 +31,15 @@ parent tool_use that spawned them.
 import json
 import sys
 
+# Windows consoles default to cp1252; report content (arrows, box-drawing, emoji
+# in tool inputs) would otherwise crash the json.dumps prints with
+# UnicodeEncodeError. Force UTF-8 stdout so the parser never dies on non-ASCII
+# session content. (No-op if stdout can't be reconfigured, e.g. already wrapped.)
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except (AttributeError, ValueError):
+    pass
+
 if len(sys.argv) < 2:
     sys.exit("usage: python parse_session.py <path-to-session>.jsonl")
 
