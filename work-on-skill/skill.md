@@ -13,11 +13,15 @@ End-to-end workflow for picking up a GitHub issue, implementing it, and opening 
 /work-on <issue-number> [descriptor]
 ```
 
-Parse the **leading integer** of the arguments as the issue number. Any text after it
-(e.g. `/work-on 476 HousingVendor`) is an optional scope descriptor — some launchers,
-like the artifact console's deep link, append it only to give the desktop session a
-descriptive name. Ignore it for the workflow: never pass it to `gh`, the branch name,
-or the PR. Abort with a clear message if no issue number is provided.
+Parse the **leading integer** of the arguments as the issue number. Treat any text *after*
+the number as free-form scope guidance for this run — e.g. `/work-on 123 but skip the
+migration` should genuinely steer the implementation. What the trailing text must **not** do
+is feed the issue lookup or the naming mechanics: never fold it into the `gh` issue query, the
+branch name, or the PR title/number — those derive from the issue itself. A bare noun-phrase
+descriptor like `/work-on 476 HousingVendor` — which some launchers, such as the artifact
+console's deep link, append only to name the desktop session — carries no actionable
+instruction, so it simply has no effect. Abort with a clear message if no issue number is
+provided.
 
 ## Step 1 — Verify clean main
 
