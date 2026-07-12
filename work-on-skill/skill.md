@@ -10,10 +10,14 @@ End-to-end workflow for picking up a GitHub issue, implementing it, and opening 
 ## Invocation
 
 ```
-/work-on <issue-number>
+/work-on <issue-number> [descriptor]
 ```
 
-Abort with a clear message if no issue number is provided.
+Parse the **leading integer** of the arguments as the issue number. Any text after it
+(e.g. `/work-on 476 HousingVendor`) is an optional scope descriptor — some launchers,
+like the artifact console's deep link, append it only to give the desktop session a
+descriptive name. Ignore it for the workflow: never pass it to `gh`, the branch name,
+or the PR. Abort with a clear message if no issue number is provided.
 
 ## Step 1 — Verify clean main
 
