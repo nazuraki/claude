@@ -10,19 +10,20 @@ End-to-end workflow for picking up a GitHub issue, implementing it, and opening 
 ## Invocation
 
 ```
-/work-on <issue-number> [descriptor]
+/work-on <issue-number> [extra instructions…]
 ```
 
-Parse the **leading integer** of the arguments as the issue number, and treat everything
-*after* it as free-form scope guidance for this run — honour it as a real instruction. Forms
+Accept the **entire** argument string — never drop any of it. Read the **leading integer** as
+the issue number, and take **everything after it** as extra instructions for this run: carry
+them into the plan (Step 5) and the implementation, honouring them as real directives. Forms
 like `/work-on 123 but with this small change…` or `/work-on 123 but skip the migration` must
-genuinely steer the implementation. The one thing the trailing text must **not** do is feed
-the issue lookup or the naming mechanics: never fold it into the `gh` issue query, the branch
-name, or the PR title/number — those always derive from the issue itself. (Some launchers, like
-the artifact console's deep link, append a short descriptor such as `HousingVendor` purely to
-name the desktop session; no need to special-case it — as scope guidance a bare topic word just
-adds harmless context and won't derail the run.) Abort with a clear message if no issue number
-is provided.
+genuinely steer the work. The only thing this trailing text must **not** do is feed the issue
+lookup or the naming mechanics — never fold it into the `gh` issue query, the branch name, or
+the PR title/number, which always derive from the issue itself. (Some launchers, like the
+artifact console's deep link, append a short descriptor such as `HousingVendor` purely to name
+the desktop session; no need to special-case it — as an instruction a bare topic word is just
+harmless context and won't derail the run.) Abort with a clear message only if no issue number
+is present at all.
 
 ## Step 1 — Verify clean main
 
@@ -94,7 +95,7 @@ Confirm the branch name to the user.
 
 ## Step 5 — Implementation plan
 
-Analyze the issue and the relevant codebase to produce an implementation plan. The plan must:
+Analyze the issue, **any extra instructions passed in the invocation** (see Invocation), and the relevant codebase to produce an implementation plan that satisfies all of them. If the invocation instructions add to, narrow, or override the issue, honour them and call out where they diverge from the issue. The plan must:
 
 - Break the work into numbered, concrete steps
 - Call out which files will be created or modified
