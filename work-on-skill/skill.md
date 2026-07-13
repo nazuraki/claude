@@ -10,10 +10,26 @@ End-to-end workflow for picking up a GitHub issue, implementing it, and opening 
 ## Invocation
 
 ```
-/work-on <issue-number>
+/work-on <issue-number> [descriptor] [-- instructions]
 ```
 
-Abort with a clear message if no issue number is provided.
+Read the **leading integer** as the issue number, then split the remaining arguments on the
+first `--` separator:
+
+- **Before `--`** — an optional *descriptor*: a cosmetic scope/title hint (e.g. the addon or
+  module the work touches). Launchers such as the artifact console's deep link append it purely
+  to name the desktop session; it does **not** steer the work.
+- **After `--`** — optional *instructions*: additional context or directives for this run.
+  Honour them as real instructions that shape the plan (Step 5) and the implementation.
+
+Examples:
+- `/work-on 123 foo` — issue 123, descriptor `foo`, no instructions.
+- `/work-on 123 -- and also include X` — issue 123, no descriptor, instruction "and also include X".
+- `/work-on 123 bar -- but skip foo` — issue 123, descriptor `bar`, instruction "but skip foo".
+
+Neither the descriptor nor the instructions ever feed the issue lookup or the naming mechanics:
+the `gh` issue query, the branch name, and the PR title/number always derive from the issue
+itself. Abort with a clear message only if no issue number is present.
 
 ## Step 1 — Verify clean main
 
@@ -85,7 +101,7 @@ Confirm the branch name to the user.
 
 ## Step 5 — Implementation plan
 
-Analyze the issue and the relevant codebase to produce an implementation plan. The plan must:
+Analyze the issue, **any instructions passed after `--` in the invocation** (see Invocation), and the relevant codebase to produce an implementation plan that satisfies both. If those instructions add to, narrow, or override the issue, honour them and call out where they diverge from the issue. (The pre-`--` descriptor is only a cosmetic title hint — it does not shape the plan.) The plan must:
 
 - Break the work into numbered, concrete steps
 - Call out which files will be created or modified
