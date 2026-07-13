@@ -10,20 +10,26 @@ End-to-end workflow for picking up a GitHub issue, implementing it, and opening 
 ## Invocation
 
 ```
-/work-on <issue-number> [extra instructions…]
+/work-on <issue-number> [descriptor] [-- instructions]
 ```
 
-Accept the **entire** argument string — never drop any of it. Read the **leading integer** as
-the issue number, and take **everything after it** as extra instructions for this run: carry
-them into the plan (Step 5) and the implementation, honouring them as real directives. Forms
-like `/work-on 123 but with this small change…` or `/work-on 123 but skip the migration` must
-genuinely steer the work. The only thing this trailing text must **not** do is feed the issue
-lookup or the naming mechanics — never fold it into the `gh` issue query, the branch name, or
-the PR title/number, which always derive from the issue itself. (Some launchers, like the
-artifact console's deep link, append a short descriptor such as `HousingVendor` purely to name
-the desktop session; no need to special-case it — as an instruction a bare topic word is just
-harmless context and won't derail the run.) Abort with a clear message only if no issue number
-is present at all.
+Read the **leading integer** as the issue number, then split the remaining arguments on the
+first `--` separator:
+
+- **Before `--`** — an optional *descriptor*: a cosmetic scope/title hint (e.g. the addon or
+  module the work touches). Launchers such as the artifact console's deep link append it purely
+  to name the desktop session; it does **not** steer the work.
+- **After `--`** — optional *instructions*: additional context or directives for this run.
+  Honour them as real instructions that shape the plan (Step 5) and the implementation.
+
+Examples:
+- `/work-on 123 foo` — issue 123, descriptor `foo`, no instructions.
+- `/work-on 123 -- and also include X` — issue 123, no descriptor, instruction "and also include X".
+- `/work-on 123 bar -- but skip foo` — issue 123, descriptor `bar`, instruction "but skip foo".
+
+Neither the descriptor nor the instructions ever feed the issue lookup or the naming mechanics:
+the `gh` issue query, the branch name, and the PR title/number always derive from the issue
+itself. Abort with a clear message only if no issue number is present.
 
 ## Step 1 — Verify clean main
 
@@ -95,7 +101,7 @@ Confirm the branch name to the user.
 
 ## Step 5 — Implementation plan
 
-Analyze the issue, **any extra instructions passed in the invocation** (see Invocation), and the relevant codebase to produce an implementation plan that satisfies all of them. If the invocation instructions add to, narrow, or override the issue, honour them and call out where they diverge from the issue. The plan must:
+Analyze the issue, **any instructions passed after `--` in the invocation** (see Invocation), and the relevant codebase to produce an implementation plan that satisfies both. If those instructions add to, narrow, or override the issue, honour them and call out where they diverge from the issue. (The pre-`--` descriptor is only a cosmetic title hint — it does not shape the plan.) The plan must:
 
 - Break the work into numbered, concrete steps
 - Call out which files will be created or modified
