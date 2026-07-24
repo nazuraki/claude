@@ -123,6 +123,49 @@ class TestNeverBreaksTheSession(HookContractTestCase):
         self.assertEqual([r["event"] for r in self.records()],
                          ["session_start", "session_end"])
 
+    def test_stop_on_a_log_with_undecodable_bytes(self):
+        """handle_stop reads the whole log back; a bad byte must not escape.
+
+        Anything can end up in the file -- a torn write, a crashed process, an
+        editor saving in another encoding. 0x81 is not valid as a leading UTF-8
+        byte and is unmapped in cp1252, so read_text() raises whichever of the
+        two is the platform default.
+        """
+        self.hook("prompt", {"session_id": SID, "prompt": "hi"})
+        log, = sorted(self.logs.glob("*.log"))
+        with open(log, "ab") as f:
+            f.write(b'{"event": "prompt", "text": "\x81\xff"}\n')
+
+        self.hook("stop", {"session_id": SID})
+
+    def test_log_directory_replaced_by_a_file(self):
+        """Every handler starts with LOG_DIR.mkdir(); make that fail.
+
+        A file where the directory should be is the portable way to make the
+        log directory unusable -- unlike chmod, it denies writes on Windows
+        too -- and it stands in for the real-world causes (a removed or
+        permission-changed ~/.claude/logs, a full disk).
+        """
+        self.logs.parent.mkdir(parents=True, exist_ok=True)
+        self.logs.write_text("not a directory")
+
+        for event in ("prompt", "pre", "tool", "stop"):
+            with self.subTest(event=event):
+                self.hook(event, {"session_id": SID, "tool_name": "Read",
+                                  "tool_input": {}, "tool_response": {}})
+        self.assertEqual(self.logs.read_text(), "not a directory")
+
+    def test_log_path_that_cannot_be_appended_to(self):
+        """A registered log path that is a directory breaks _append's open()."""
+        self.logs.mkdir(parents=True, exist_ok=True)
+        blocked = self.logs / "2020-01-01_00-00-00_deadbeef.log"
+        blocked.mkdir()
+        (self.logs / ".session_map.json").write_text(
+            json.dumps({SID: {"path": str(blocked)}}))
+
+        self.hook("prompt", {"session_id": SID, "prompt": "hi"})
+        self.hook("stop", {"session_id": SID})
+
 
 class TestSessionIsolation(HookContractTestCase):
 

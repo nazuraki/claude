@@ -371,14 +371,25 @@ def main() -> None:
     except Exception:
         sys.exit(0)  # never block Claude on a parse failure
 
-    if event == "prompt":
-        handle_prompt(data)
-    elif event == "pre":
-        handle_pre(data)
-    elif event == "tool":
-        handle_tool(data)
-    elif event == "stop":
-        handle_stop(data)
+    # Same contract as the parse failure above, for the same reason: a non-zero
+    # exit from a UserPromptSubmit hook blocks the user's prompt, so a logging
+    # tool must swallow its own failures. Every handler touches the filesystem
+    # (mkdir, open, touch, read_text, os.getcwd) and each of those can fail for
+    # reasons that have nothing to do with the session -- a removed log
+    # directory, a full disk, an AV scanner holding a file, a log with
+    # undecodable bytes, a deleted cwd. Losing a log line is acceptable;
+    # breaking Claude Code is not.
+    try:
+        if event == "prompt":
+            handle_prompt(data)
+        elif event == "pre":
+            handle_pre(data)
+        elif event == "tool":
+            handle_tool(data)
+        elif event == "stop":
+            handle_stop(data)
+    except Exception:
+        sys.exit(0)
 
 
 if __name__ == "__main__":
