@@ -180,6 +180,13 @@ def get_or_create_log(session_id: str) -> pathlib.Path:
             ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             short = session_id[:8] if len(session_id) >= 8 else session_id
             path = str(LOG_DIR / f"{ts}_{short}.log")
+            # Create the file here, inside the lock, rather than leaving it to
+            # the _append() below. _prune() drops entries whose file is
+            # missing, so a registration published without its file can be
+            # evicted by another process that takes the lock in the window
+            # before _append() runs -- and the evicted session then registers
+            # again on its next hook event, splitting its log in two.
+            pathlib.Path(path).touch()
             m[session_id] = {"path": path}
             is_new.append(True)
         result.update(m[session_id])

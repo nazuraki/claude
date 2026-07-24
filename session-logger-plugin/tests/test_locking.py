@@ -97,6 +97,21 @@ def worker_append(log_dir, log_path, tag, count, barrier):
         mod._append(log, {"event": "tool_post", "worker": tag, "seq": i})
 
 
+def worker_register_stalled(log_dir, session_id, stall):
+    """Register, then stall in the gap between releasing the lock and writing
+    the first record -- the window in which _prune could evict the entry."""
+    mod = load_logger(log_dir)
+    real_append = mod._append
+
+    def slow_append(log, record):
+        print("registered", flush=True)
+        time.sleep(float(stall))
+        return real_append(log, record)
+
+    mod._append = slow_append
+    mod.get_or_create_log(session_id)
+
+
 def worker_hold(log_dir, path, seconds, mode):
     """Acquire the shim's lock on `path`, announce it, then hold it."""
     mod = load_logger(log_dir)
@@ -109,6 +124,7 @@ def worker_hold(log_dir, path, seconds, mode):
 
 WORKERS = {
     "register": worker_register,
+    "register_stalled": worker_register_stalled,
     "append": worker_append,
     "hold": worker_hold,
 }
@@ -171,6 +187,38 @@ class TestSessionMapConcurrency(LockingTestCase):
         m = json.loads((pathlib.Path(self.dir) / ".session_map.json").read_text())
         missing = sorted(set(ids) - set(m))
         self.assertEqual(missing, [], f"lost {len(missing)}/{self.N} registrations")
+
+    def test_a_registration_is_not_pruned_before_its_first_record(self):
+        """The log file must be created inside the lock, not by the later
+        _append(). _prune() drops entries whose file is missing, so a
+        registration published without its file can be evicted by the next
+        process to take the lock -- the evicted session then registers again
+        and its log splits across two files.
+
+        The window is only ~100us wide in practice, so this test forces the
+        interleaving instead of racing for it.
+        """
+        child = spawn("--worker", "register_stalled", self.dir, "aaaaaaaa", "2.0")
+        try:
+            ack = child.stdout.readline().strip()
+            if ack != "registered":
+                # Read stderr only on failure: it blocks until the child exits,
+                # which would let the stall finish and hide the very race this
+                # test exists to catch.
+                self.fail(f"worker did not register: {ack!r} {child.stderr.read()}")
+            # A is registered but has written nothing yet. Registering B runs
+            # _prune over A's entry.
+            self.mod.get_or_create_log("bbbbbbbb")
+            m = json.loads((pathlib.Path(self.dir) / ".session_map.json").read_text())
+            self.assertIn("aaaaaaaa", m, "a just-registered session was pruned")
+            self.assertIn("bbbbbbbb", m)
+        finally:
+            finish(child)
+
+        m = json.loads((pathlib.Path(self.dir) / ".session_map.json").read_text())
+        self.assertEqual(sorted(m), ["aaaaaaaa", "bbbbbbbb"])
+        logs = sorted(pathlib.Path(self.dir).glob("*.log"))
+        self.assertEqual(len(logs), 2, f"session logs fragmented: {logs}")
 
     def test_each_session_gets_its_own_log_with_one_start_record(self):
         barrier = time.time() + BARRIER_LEAD
@@ -318,7 +366,12 @@ class TestFailureModes(LockingTestCase):
         """A hook must never crash or stall for long on a stuck lock."""
         p = pathlib.Path(self.dir) / "contended"
         p.write_text("")
+        # The holder must outlive the assertion bound, or an acquire that
+        # simply waits for the release would pass: hold 4s, allow 3s, deadline
+        # 2s. That leaves a full second of margin on each side rather than
+        # relying on clock jitter to tell "timed out" from "waited it out".
         hold = self.mod._LOCK_TIMEOUT + 2.0
+        limit = self.mod._LOCK_TIMEOUT + 1.0
         child = hold_lock(self.dir, p, hold)
         try:
             with open(p, "a") as f:
@@ -329,8 +382,7 @@ class TestFailureModes(LockingTestCase):
         finally:
             finish(child)
         self.assertGreaterEqual(elapsed, self.mod._LOCK_TIMEOUT * 0.5)
-        self.assertLess(elapsed, self.mod._LOCK_TIMEOUT + 2.0,
-                        "acquire overran its deadline")
+        self.assertLess(elapsed, limit, "acquire blocked past its deadline")
 
     @unittest.skipUnless(IS_WINDOWS, "msvcrt-specific")
     def test_second_process_is_genuinely_excluded(self):
