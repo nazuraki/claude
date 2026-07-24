@@ -12,15 +12,26 @@ import json
 import os
 import pathlib
 import sys
+import time
 from datetime import datetime
 
-# fcntl is POSIX-only (macOS, Linux). On Windows it raises ImportError,
-# which crashes the hook before any logging occurs. The shim below
-# provides no-op locking on platforms that don't support fcntl so the
-# logger degrades gracefully. The only risk is a rare race condition on
-# the session map when multiple Claude Code sessions start simultaneously.
+# ---------------------------------------------------------------------------
+# File locking shim
+#
+# fcntl is POSIX-only (macOS, Linux). On Windows it raises ImportError, which
+# crashes the hook before any logging occurs. Windows gets msvcrt.locking()
+# instead; any other platform degrades to no-ops so the logger still runs.
+#
+# Skipping the lock is not harmless: with several Claude Code sessions
+# starting at once, the unlocked read-modify-write in _update_session_map()
+# loses all but one registration every time (measured: 2 sessions lose 1,
+# 8 sessions lose 6-7). A session missing from the map re-registers on its
+# next hook call, so its log fragments across several files.
+# ---------------------------------------------------------------------------
 try:
     import fcntl
+
+    _LOCK_BACKEND = "fcntl"
 
     def _lock_ex(f):
         fcntl.flock(f, fcntl.LOCK_EX)
@@ -29,11 +40,80 @@ try:
         fcntl.flock(f, fcntl.LOCK_UN)
 
 except ImportError:
-    def _lock_ex(f):
-        pass
+    try:
+        import msvcrt
 
-    def _unlock(f):
-        pass
+        _LOCK_BACKEND = "msvcrt"
+
+        # msvcrt.locking() differs from flock() in three ways, each of which
+        # dictates part of the implementation below.
+        #
+        # 1. It locks a BYTE RANGE starting at the current file position, not
+        #    the whole file. Locking wherever the handle happens to sit is
+        #    useless here: open(log, "a") starts at EOF, so two appenders whose
+        #    files differ in length lock disjoint ranges and both believe they
+        #    hold "the" lock. We always lock the same single byte at a fixed
+        #    offset instead, which turns the range lock into an ordinary mutex
+        #    shared by every process that opens that file.
+        #
+        # 2. Windows range locks are MANDATORY, not advisory. Unlocked reads
+        #    and writes overlapping a locked range fail with PermissionError,
+        #    and reading a whole file requests one byte past EOF -- so a lock
+        #    at or below EOF would break handle_stop()'s unlocked
+        #    log.read_text(). _LOCK_OFFSET sits far beyond the end of any real
+        #    log, so readers, appenders and stat() never overlap it. O_APPEND
+        #    ignores the file position, so writes still land at EOF and the
+        #    seek does not create a sparse file.
+        #
+        # 3. LK_LOCK retries for ~10s and then raises OSError instead of
+        #    blocking until the lock is free. A hook must not stall Claude
+        #    Code for ten seconds, let alone crash, so we poll LK_NBLCK
+        #    against a short deadline and fall back to writing unlocked if the
+        #    lock never arrives.
+        _LOCK_OFFSET = 1 << 40   # 1 TiB -- past EOF of any real session log
+        _LOCK_TIMEOUT = 2.0      # seconds; the critical section is sub-ms
+        _LOCK_POLL = 0.01
+
+        # Descriptors we actually acquired. LK_UNLCK on a range we do not hold
+        # raises, which would turn a caller's `finally: _unlock(f)` into a
+        # second exception after a timed-out acquire. Keying by fd is safe
+        # because _lock_ex/_unlock are always paired inside a single `with`
+        # block and are never nested.
+        _held = set()
+
+        def _lock_ex(f):
+            fd = f.fileno()
+            deadline = time.monotonic() + _LOCK_TIMEOUT
+            while True:
+                f.seek(_LOCK_OFFSET)
+                try:
+                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                    _held.add(fd)
+                    return
+                except OSError:
+                    if time.monotonic() >= deadline:
+                        return  # proceed unlocked rather than break the hook
+                    time.sleep(_LOCK_POLL)
+
+        def _unlock(f):
+            fd = f.fileno()
+            if fd not in _held:
+                return
+            _held.discard(fd)
+            f.seek(_LOCK_OFFSET)
+            try:
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+            except OSError:
+                pass
+
+    except ImportError:
+        _LOCK_BACKEND = "none"
+
+        def _lock_ex(f):
+            pass
+
+        def _unlock(f):
+            pass
 
 
 LOG_DIR = pathlib.Path.home() / ".claude" / "logs"
@@ -143,6 +223,11 @@ def _append(log: pathlib.Path, record: dict) -> None:
         _lock_ex(f)
         try:
             f.write(line)
+            # Flush inside the lock. f.write() only fills the buffer, and the
+            # `with` block would otherwise flush it at close() -- after
+            # _unlock() -- leaving the lock protecting nothing. Applies to
+            # every backend, not just msvcrt.
+            f.flush()
         finally:
             _unlock(f)
 
