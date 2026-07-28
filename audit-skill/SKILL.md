@@ -194,14 +194,17 @@ gh api repos/{owner}/{repo} \
   --field delete_branch_on_merge=true
 ```
 
-**Labels** — rename legacy labels first, then create any still missing:
-```sh
-# Rename legacy labels (preserves existing issues/PRs tagged with them)
-gh api repos/{owner}/{repo}/labels/feature       --method PATCH --field name=feat          --field description="New feature (Conventional Commits: feat)" 2>/dev/null
-gh api repos/{owner}/{repo}/labels/bug           --method PATCH --field name=fix           --field description="Bug fix (Conventional Commits: fix)" 2>/dev/null
-gh api repos/{owner}/{repo}/labels/documentation --method PATCH --field name=docs          --field description="Documentation (Conventional Commits: docs)" 2>/dev/null
+**Labels** — three steps, in this order. The rename and delete steps **mutate issues and PRs that already exist**; the create step does not. Run them separately, and confirm the two destructive ones with the user first — approving "fix the audit findings" is not approval to rewrite the labels on every open issue.
 
-# Create missing required labels
+**1. Rename legacy labels — confirm first.** A rename is a `PATCH` that rewrites the label on **every issue and PR already carrying it**. The association follows the new name, so nothing is lost, but every one of those items changes. Some repos keep `bug` / `documentation` / `feature` deliberately — a legacy name is not automatically a mistake. Ask which to rename and skip the rest, then run only those:
+```sh
+gh api repos/{owner}/{repo}/labels/feature       --method PATCH --field name=feat          --field description="New feature (Conventional Commits: feat)"
+gh api repos/{owner}/{repo}/labels/bug           --method PATCH --field name=fix           --field description="Bug fix (Conventional Commits: fix)"
+gh api repos/{owner}/{repo}/labels/documentation --method PATCH --field name=docs          --field description="Documentation (Conventional Commits: docs)"
+```
+
+**2. Create missing labels.** Additive — no existing issue is touched, so this needs no confirmation beyond the fix pass itself:
+```sh
 gh label create "feat"         --repo {owner}/{repo} --color 0075ca --description "New feature (Conventional Commits: feat)"         --force
 gh label create "fix"          --repo {owner}/{repo} --color d73a4a --description "Bug fix (Conventional Commits: fix)"               --force
 gh label create "chore"        --repo {owner}/{repo} --color e4e669 --description "Chore (Conventional Commits: chore)"               --force
@@ -227,10 +230,10 @@ gh label create "L"            --repo {owner}/{repo} --color d93f0b --descriptio
 gh label create "XL"           --repo {owner}/{repo} --color b60205 --description "Effort: project-wide impact (e.g., tooling, monorepo)" --force
 ```
 
-Delete forbidden labels:
+**3. Delete forbidden labels — confirm first.** A delete strips the label from every issue and PR carrying it, and unlike a rename that association is **not** recoverable. Ask before running these:
 ```sh
-gh api repos/{owner}/{repo}/labels/good%20first%20issue --method DELETE 2>/dev/null
-gh api repos/{owner}/{repo}/labels/help%20wanted --method DELETE 2>/dev/null
+gh api "repos/{owner}/{repo}/labels/good%20first%20issue" --method DELETE
+gh api "repos/{owner}/{repo}/labels/help%20wanted" --method DELETE
 ```
 
 **Manual only:**
@@ -245,4 +248,5 @@ After fixing, re-audit only the changed areas and confirm they now pass.
 - For CI: if the workflow file has a different name, still check it. If there are multiple workflow files, audit the most likely main CI gate.
 - For Justfile app-type classification: look at whether the project has a start script, server code, or deployment config — if yes, treat it as an app.
 - If a label already exists with the wrong color or description, mark it OK (name match is sufficient) — do not modify unless the user explicitly asks.
+- Never rename or delete a label without asking first, even inside an already-approved fix pass — both rewrite labels on issues that already exist. Creating a missing label is additive and needs no separate confirmation.
 - If the `main` branch doesn't exist, try `master` for branch protection. If neither, skip that check.
