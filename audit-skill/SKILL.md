@@ -58,7 +58,7 @@ Parse `owner/repo` from the URL. If no remote exists, skip all GitHub settings c
 - `default` recipe is first and uses exactly `@just --list`
 - Has all required recipes: `install`, `check`, `lint`, `fix`, `typecheck`, `test`, `clean`, `fresh`
 - For runnable apps (not libraries): also has `run` and `dev`
-- For containerized apps: also has `docker-build`, `docker-run`, `docker-push`
+- For containerized apps: also has `up`, `down`, `reup` (up --build)
 - For deployable apps: also has `deploy` (and `deploy-staging` if staging exists)
 - `check` depends on `lint typecheck test` (may omit `test` only if no tests exist)
 - `lint` is read-only; `fix` is write-mode — not a single combined recipe
