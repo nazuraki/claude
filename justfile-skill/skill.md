@@ -93,6 +93,24 @@ docker-push:
     docker push <registry>/<image-name>
 ```
 
+**Compose recipes** (apps deployed via docker compose) — lifecycle recipes are unprefixed
+(`up`/`down`/`logs`, NOT `docker-up`/`docker-down`/`docker-logs`); only image recipes keep
+the `docker-` prefix:
+
+```just
+# Build and start the stack
+up:
+    docker compose up -d --build
+
+# Stop the stack
+down:
+    docker compose down
+
+# Tail container logs
+logs:
+    docker compose logs -f
+```
+
 **Deploy recipe** (deployable apps only) — insert after Docker recipes (or after `build` if no Docker):
 
 ```just
