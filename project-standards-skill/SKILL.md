@@ -87,32 +87,36 @@ Check:
 | REST | `delete_branch_on_merge` | `true` |
 | GraphQL | `usesCustomOpenGraphImage` | `true` |
 
-#### Branch protection
+#### Branch rules
 
-Resolve the default branch from the `default_branch` field of the `gh api repos/{owner}/{repo}` response already fetched above, then:
+Branch protection is expressed as a **repository ruleset** targeting the default branch, not classic branch protection. Resolve the default branch from the `default_branch` field of the `gh api repos/{owner}/{repo}` response already fetched above, then fetch the rules in effect on it (this merges repository and organization rulesets) and, separately, check that no classic protection remains:
 
 ```sh
+gh api repos/{owner}/{repo}/rules/branches/{default_branch}
 gh api repos/{owner}/{repo}/branches/{default_branch}/protection
 ```
 
-A `404 Not Found` means the default branch is unprotected — mark every check in this area FAIL (except `codeowners-file`, which is checked on its own).
+An empty array from the first call means no ruleset governs the default branch — mark every rule check FAIL (`codeowners-file` and `no-classic-protection` are checked on their own).
 
-A `403` whose message says to upgrade the plan means the repo is private and its owner is on the Free plan, where branch protection is unavailable. Report the whole area as `N/A (private repo, Free plan)`. A private repo that accepts contributors must live in a Team-plan org: Write access is the only way to push branches without forking, and only protection keeps Write from merging. Flag the move under Critical gaps.
+A `403` whose message says to upgrade the plan means the repo is private and its owner is on the Free plan, where rulesets and branch protection are unavailable. Report the whole area as `N/A (private repo, Free plan)`. A private repo that accepts contributors must live in a Team-plan org: Write access is the only way to push branches without forking, and only branch rules keep Write from merging. Flag the move under Critical gaps.
 
 Check (names are machine-friendly identifiers; report them verbatim):
 
-| Check | Field | Expected |
+| Check | Where | Expected |
 |-------|-------|----------|
-| `branch-protection-enabled` | endpoint returns `200` | Protection exists on the default branch |
-| `require-pr-approval` | `required_pull_request_reviews.required_approving_review_count` | `>= 1` |
-| `require-codeowner-review` | `required_pull_request_reviews.require_code_owner_reviews` | `true` |
-| `dismiss-stale-reviews` | `required_pull_request_reviews.dismiss_stale_reviews` | `true` |
+| `ruleset-active` | first call returns a non-empty array | An active ruleset targets the default branch |
+| `no-deletion` | a rule of type `deletion` | Present |
+| `no-force-push` | a rule of type `non_fast_forward` | Present |
+| `require-pr-approval` | `pull_request` rule, `parameters.required_approving_review_count` | `>= 1` |
+| `require-codeowner-review` | `pull_request` rule, `parameters.require_code_owner_review` | `true` |
+| `dismiss-stale-reviews` | `pull_request` rule, `parameters.dismiss_stale_reviews_on_push` | `true` |
 | `codeowners-file` | `.github/CODEOWNERS` in the repo | Exists, with a catch-all `*` rule naming the person who approves merges |
-| `require-ci-checks` | `required_status_checks.checks[].context` | Includes the CI **lint** and **test** job names |
+| `require-ci-checks` | `required_status_checks` rule, `parameters.required_status_checks[].context` | Includes the CI **lint** and **test** job names, and `strict_required_status_checks_policy` is `true` |
+| `no-classic-protection` | second call returns `404` | No classic protection rule on the default branch |
 
-An approval count alone lets two collaborators with Write approve each other's PRs. Code-owner review makes the owner's approval mandatory, and dismissing stale reviews stops a later push from riding an earlier approval. `codeowners-file` is a file check, but it lives here because the setting enforces nothing without it. The catch-all rule names a user or team (`*  @login`), never the org. When auditing by remote, read it with `gh api repos/{owner}/{repo}/contents/.github/CODEOWNERS`.
+`no-deletion` and `no-force-push` exist because a ruleset permits both unless a rule forbids them, where classic protection forbade them by default. An approval count alone lets two collaborators with Write approve each other's PRs. Code-owner review makes the owner's approval mandatory, and dismissing stale reviews stops a later push from riding an earlier approval. `codeowners-file` is a file check, but it lives here because the rule enforces nothing without it. The catch-all rule names a user or team (`*  @login`), never the org. When auditing by remote, read it with `gh api repos/{owner}/{repo}/contents/.github/CODEOWNERS`. `no-classic-protection` catches repos that predate rulesets: classic and ruleset protection can coexist, and two sources of truth is the failure mode.
 
-For `require-ci-checks`: compare the required contexts against the job names in the project's CI workflow (see the CI workflow area). A job satisfies lint or test if it performs that role even when named differently (e.g., `lint-and-typecheck` covers lint); if no required status check maps to each of lint and test, mark FAIL. If the API returns only the legacy `required_status_checks.contexts` array, check that instead.
+For `require-ci-checks`: compare the required contexts against the job names in the project's CI workflow (see the CI workflow area). A job satisfies lint or test if it performs that role even when named differently (e.g., `lint-and-typecheck` covers lint); if no required status check maps to each of lint and test, mark FAIL.
 
 Fetch labels:
 ```sh
@@ -188,13 +192,16 @@ Audited: <absolute path>
 - FAIL Auto-delete head branches (disabled)
 - FAIL Social preview image (not set)
 
-### Branch protection            [PASS | FAIL | N/A]
-- OK   branch-protection-enabled
+### Branch rules                 [PASS | FAIL | N/A]
+- OK   ruleset-active (main)
+- OK   no-deletion
+- OK   no-force-push
 - FAIL require-pr-approval (required approvals: 0)
 - OK   require-codeowner-review
 - FAIL dismiss-stale-reviews (disabled)
 - OK   codeowners-file (* @login)
 - OK   require-ci-checks (lint, test)
+- FAIL no-classic-protection (classic rule still on main)
 
 ### Labels                       [PASS | FAIL | N/A]
 - FAIL Missing: perf, ci, style
@@ -206,7 +213,7 @@ Summary: X/9 areas passing
 Critical gaps: <one-line list of the most important missing things, or "none">
 ```
 
-Each item is `OK` or `FAIL`. Section header is `PASS` if all items OK, `FAIL` if any fail, `MISSING` if the file doesn't exist, `N/A` if no GitHub remote was detected, or, for Branch protection only, the repo is private on a Free plan.
+Each item is `OK` or `FAIL`. Section header is `PASS` if all items OK, `FAIL` if any fail, `MISSING` if the file doesn't exist, `N/A` if no GitHub remote was detected, or, for Branch rules only, the repo is private on a Free plan.
 
 ### Step 4 — Offer to fix
 
@@ -236,30 +243,61 @@ gh api repos/{owner}/{repo} \
 mkdir -p .github
 printf '# Default reviewers for any file not matched by a more specific rule\n*\t@%s\n' "$(gh api user --jq .login)" > .github/CODEOWNERS
 ```
-The file goes in through a PR like any other change. The protection PUT below can be applied at any time, but code-owner review enforces nothing until the file is on the default branch.
+The file goes in through a PR like any other change. The ruleset below can be applied at any time, but code-owner review enforces nothing until the file is on the default branch.
 
-**Branch protection** — apply with a single PUT, substituting the actual lint and test job names from the project's CI workflow:
+**Branch rules** — create a ruleset named after the default branch, substituting the actual lint and test job names from the project's CI workflow. The bypass entry (`RepositoryRole` 5 = repository admin) is the ruleset equivalent of `enforce_admins: false`; release automation that pushes with an admin token depends on it.
 ```sh
-gh api repos/{owner}/{repo}/branches/{default_branch}/protection \
-  --method PUT \
+gh api repos/{owner}/{repo}/rulesets \
+  --method POST \
   --input - <<'EOF'
 {
-  "required_status_checks": {
-    "strict": true,
-    "checks": [
-      { "context": "lint" },
-      { "context": "test" }
-    ]
-  },
-  "enforce_admins": false,
-  "required_pull_request_reviews": {
-    "required_approving_review_count": 1,
-    "require_code_owner_reviews": true,
-    "dismiss_stale_reviews": true
-  },
-  "restrictions": null
+  "name": "{default_branch}",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+  "bypass_actors": [
+    { "actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always" }
+  ],
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": true,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "allowed_merge_methods": ["squash"]
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [
+          { "context": "lint" },
+          { "context": "test" }
+        ]
+      }
+    }
+  ]
 }
 EOF
+```
+
+If a ruleset already targets the default branch, update it in place with the same body instead of creating a second one:
+```sh
+gh api repos/{owner}/{repo}/rulesets --jq '.[] | select(.target == "branch") | "\(.id) \(.name)"'
+gh api repos/{owner}/{repo}/rulesets/{id} --method PUT --input - <<'EOF'
+...same body...
+EOF
+```
+
+Once the ruleset is active, remove classic protection so there is one source of truth:
+```sh
+gh api repos/{owner}/{repo}/branches/{default_branch}/protection --method DELETE
 ```
 
 **Labels** — rename legacy labels first, then create any still missing:
@@ -313,4 +351,4 @@ After fixing, re-audit only the changed areas and confirm they now pass.
 - For CI: if the workflow file has a different name, still check it. If there are multiple workflow files, audit the most likely main CI gate.
 - App-vs-library classification (used by both sibling skills): look at whether the project has a start script, server code, or deployment config — if yes, treat it as an app.
 - If a label already exists with the wrong color or description, mark it OK (name match is sufficient) — do not modify unless the user explicitly asks.
-- A `403` on the protection endpoint is a plan limit, not a missing setting. Do not retry with rulesets or classic protection variants; report `N/A` and, if the repo takes contributors, the Team-org move.
+- A `403` on the rules endpoints is a plan limit, not a missing setting. Do not fall back to classic protection; report `N/A` and, if the repo takes contributors, the Team-org move.
