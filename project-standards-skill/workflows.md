@@ -60,6 +60,45 @@ jobs:
 
 Swap the setup steps for the project's runtime (`actions/setup-python`, `dtolnay/rust-toolchain@stable` plus `Swatinem/rust-cache`). Add a `strategy.matrix` on the `test` job when the project supports more than one runtime version or platform.
 
+## `pr-guidelines.yml` — PR title lint
+
+Required in every repo. Squash commit titles come from PR titles, so this is the only enforcement of Conventional Commits on `main` history. The job id `pr-title` is a required status check in the ruleset.
+
+```yaml
+name: PR guidelines
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            build
+            chore
+            ci
+            docs
+            feat
+            fix
+            perf
+            refactor
+            revert
+            style
+            test
+          requireScope: false
+```
+
+Optional second job `tests-with-code`: diff the PR against its base, and fail when source files under `src/` changed without any `*.test.*` or `*.spec.*` file (or, for Rust, without a `#[cfg(test)]` block or a file under `tests/`) changing too. Print the untested files and tell the author to add tests or explain in the PR description why the change is untestable. Do not make it a required check; it is a nudge, not a gate.
+
 ## `publish.yml` — container image to GHCR
 
 Required for any repo with a Dockerfile that deploys as a container. Every push to `main` publishes `latest` and `sha-<short>`; a `v*` tag publishes semver tags.

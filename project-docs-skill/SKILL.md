@@ -32,7 +32,7 @@ The documents every project carries, what each one is for, and where it lives. L
 | `docs/PURPOSE.md` | Why the project exists | Problem being solved (1–3 paragraphs); explicit non-goals; intended audience or users |
 | `CONTEXT.md` | Working context for humans and agents | Architectural decisions not visible in code; business rules and thresholds (canonical definition, even if also in code); deployment topology; env var semantics; external contracts not yet implemented; open questions and deferred decisions |
 | `CLAUDE.md` | Agent instructions only | Commands, conventions, guardrails. No project narrative — that belongs in `CONTEXT.md`, which `CLAUDE.md` may reference |
-| `LICENSE` | Legal terms | Full license text; the README states the license name |
+| `LICENSE` | Legal terms | Public repos: full license text, and the README states the license name. Private repos: no `LICENSE` file; the README license line states that the code is proprietary and names the owner |
 | `Justfile` | Task entry point | Defined by the Justfile skill (`/justfile`) — not covered here |
 
 **Status badge.** The root README shows the project's lifecycle stage as a [shields.io](https://shields.io) static badge on the line immediately after the H1. Use the exact markdown from this table so every repo renders the same badge for the same stage:
@@ -65,8 +65,13 @@ Each of these is a directory of individual detail files under `docs/`, paired wi
 | `docs/decisions/` | Architecture Decision Records: context, decision, consequences, status | An architectural decision is made that a future reader will question. One decision per file, never edited after acceptance — supersede with a new one | `NNNN-<kebab-title>.md`, four-digit zero-padded from `0001` |
 | `docs/design/` | Design docs and technical specs for a feature or subsystem: approach, alternatives, data model, interfaces | A change is large enough to need a design before implementation | `<kebab-title>.md` |
 | `docs/runbooks/` | Operational procedures: deploy, rollback, incident response, routine maintenance | The project is operated in production | `<kebab-procedure>.md` |
+| `docs/guides/` | How to use, configure, or extend the product, one topic per file: usage, configuration, theming, integration, embedding | Users need more than the README quickstart. A guide describes the product as built; it never restates a feature or design doc | `<kebab-topic>.md` |
 
-The flow between them: **research** informs **decisions**; **requirements** and **use cases** define what a **feature** must do; **design** says how it will be built; **runbooks** say how it is operated. A detail file links to the files it derives from or satisfies.
+The flow between them: **research** informs **decisions**; **requirements** and **use cases** define what a **feature** must do; **design** says how it will be built; **runbooks** say how it is operated; **guides** tell users how to use what was built. A detail file links to the files it derives from or satisfies.
+
+**Stable IDs.** Requirements and use cases carry IDs that are never changed or reused: `RQ-nnn` and `UC-nnn`, three digits zero-padded, one sequence of each per repo (a monorepo keeps a single root sequence). A requirement is an H2 inside its area file, `## RQ-014 <title>`, with its status on the next line. A use case's H1 is `# UC-007 <actor goal>`. Summary entries, features, and cross-references cite the ID, so a renamed file or heading never breaks a reference.
+
+**Mockups.** Exported UI mockups (a rendered `screen.png` plus the `code.html` it was generated from, for example from Stitch) live in `docs/design/mockups/<kebab-name>/`. They are assets, not detail files: they get no entry of their own in `docs/design.md`; the design doc or feature that uses one links to it, and a mockup nothing links to is removed. Accompanying design-system notes go in `docs/design/design-system.md`, kebab-case like every other detail file.
 
 ### Optional root documents
 
@@ -104,7 +109,7 @@ Rules:
 - **Updated in the same change** that adds, supersedes, or retires a detail file.
 - **Opens with a short overview** — one paragraph on what the directory covers and how it is organized, then the table.
 
-Summary doc names: `requirements.md`, `features.md`, `use-cases.md`, `research.md`, `decisions.md`, `design.md`, `runbooks.md`.
+Summary doc names: `requirements.md`, `features.md`, `use-cases.md`, `research.md`, `decisions.md`, `design.md`, `runbooks.md`, `guides.md`.
 
 ## Single-project layout
 
@@ -113,7 +118,7 @@ Summary doc names: `requirements.md`, `features.md`, `use-cases.md`, `research.m
 ├── README.md
 ├── CONTEXT.md
 ├── CLAUDE.md
-├── LICENSE
+├── LICENSE                 # public repos only
 ├── Justfile
 ├── CHANGELOG.md            # optional
 ├── CONTRIBUTING.md         # optional
@@ -132,7 +137,9 @@ Summary doc names: `requirements.md`, `features.md`, `use-cases.md`, `research.m
 │   ├── design.md
 │   ├── design/
 │   ├── runbooks.md
-│   └── runbooks/
+│   ├── runbooks/
+│   ├── guides.md
+│   └── guides/
 └── .github/
     ├── workflows/ci.yml
     ├── CODEOWNERS                 # required; rules in the project-standards skill
@@ -158,7 +165,8 @@ A monorepo is one product delivered as several packages (apps, libraries, servic
 │   ├── research.md, research/           # research that informed repo-wide decisions
 │   ├── decisions.md, decisions/         # single ADR sequence for the whole repo
 │   ├── design.md, design/               # cross-package designs
-│   └── runbooks.md, runbooks/           # product-level operations
+│   ├── runbooks.md, runbooks/           # product-level operations
+│   └── guides.md, guides/               # product-level user guides
 ├── apps/<app>/
 │   ├── README.md           # required
 │   ├── CONTEXT.md          # only if the app has decisions the rest of the repo needn't know
@@ -167,7 +175,8 @@ A monorepo is one product delivered as several packages (apps, libraries, servic
 │   └── docs/               # only package-scoped detail directories, each with its summary
 │       ├── features.md, features/
 │       ├── design.md, design/
-│       └── runbooks.md, runbooks/
+│       ├── runbooks.md, runbooks/
+│       └── guides.md, guides/
 └── packages/<lib>/
     ├── README.md           # required
     └── ...                 # same rules as apps/
@@ -188,7 +197,7 @@ A monorepo is one product delivered as several packages (apps, libraries, servic
 - **`CONTEXT.md`** is allowed when the package has decisions, rules, or open questions the rest of the repo does not need. The root `CONTEXT.md` links to it.
 - **`docs/PURPOSE.md`** appears only when the package is published on its own (a library on npm, a standalone CLI). Otherwise the product's purpose is the package's purpose.
 - **`CHANGELOG.md`** appears only for independently versioned packages.
-- **`docs/features/`**, **`docs/design/`**, **`docs/runbooks/`** hold items scoped to that package only, each with its summary doc. An item that touches two packages goes in the root directory of the same name.
+- **`docs/features/`**, **`docs/design/`**, **`docs/runbooks/`**, **`docs/guides/`** hold items scoped to that package only, each with its summary doc. An item that touches two packages goes in the root directory of the same name.
 - Package summary docs may link into root detail files (a package feature satisfying a root requirement); root summaries never link into package directories except from the root `README.md` package table.
 
 ### Deciding root vs. package
@@ -210,8 +219,8 @@ Ask: "If this package were deleted, would this document still be true?" If yes, 
 2. Inventory every document listed in the catalog, at the root and (for monorepos) in each package.
 3. For each required document: check presence, then check each listed content item.
 4. For each detail directory present: check the summary doc exists, lists every file, has no dangling links, and carries status where the type has one. Check detail files follow the naming rule for their type.
-5. For each detail directory or optional document absent: flag it when its trigger clearly applies (a deployed app with no runbooks, a versioned library with no changelog, ADRs referencing a spike that has no research doc).
-6. Flag documents that violate **Never**, content that is derivable from code, and package docs that belong at the root or vice versa.
+5. For each detail directory or optional document absent: flag it when its trigger clearly applies (a deployed app with no runbooks, a versioned library with no changelog, ADRs referencing a spike that has no research doc, usage or configuration docs sitting loose under `docs/` instead of in `docs/guides/`).
+6. Flag documents that violate **Never**, content that is derivable from code, package docs that belong at the root or vice versa, requirements or use cases without stable IDs, mockups nothing links to, a private repo carrying a `LICENSE` file, and a public repo without one.
 7. Report in this format:
 
 ```
@@ -224,7 +233,7 @@ FAIL     README.md — no prerequisites section
 MISSING  docs/PURPOSE.md
 FAIL     CONTEXT.md — contains a file tree (derivable; remove)
 OK       CLAUDE.md
-OK       LICENSE
+OK       LICENSE (public) / OK       README license line states proprietary (private)
 FAIL     docs/decisions.md — missing entry for 0003-adopt-pnpm.md
 MISSING  docs/runbooks/ — project has a deploy recipe but no runbooks
 OK       docs/research.md

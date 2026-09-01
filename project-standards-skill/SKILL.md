@@ -16,7 +16,7 @@ Two areas are owned by sibling skills and this skill defers to them rather than 
 
 If a rule here ever disagrees with the owning skill, the owning skill wins.
 
-Workflow templates for the CI area (`ci.yml`, `publish.yml`, `pages.yml`, the release shapes) live in [workflows.md](workflows.md) beside this skill. Read it when auditing or fixing workflows.
+Two companion files sit beside this skill: [workflows.md](workflows.md) holds the workflow templates the CI area checks against, and [fixes.md](fixes.md) holds the commands Step 4 runs. Read each when you reach the step that needs it.
 
 ## Invocation
 
@@ -88,6 +88,7 @@ Secondary workflows are specified in [workflows.md](workflows.md). Check each on
 |----------|---------------|-------|
 | `publish.yml` | Repo has a Dockerfile and deploys as a container | Exists under that name; runs on `push` to `main` and `v*` tags; pushes to GHCR with `latest`, `sha-*`, and semver tags; `permissions: packages: write`; concurrency per ref |
 | `pages.yml` | GitHub Pages is enabled (`gh api repos/{owner}/{repo}/pages` returns `200`) | Exists under that name; `build_type` is `workflow`; deploys with `actions/deploy-pages` from the `github-pages` environment; repo `homepage` is the Pages URL |
+| `pr-guidelines.yml` | Every repo | Exists under that name; triggers on `pull_request` types `opened, edited, synchronize, reopened`; job `pr-title` runs `amannn/action-semantic-pull-request` with the Conventional Commits types; `pr-title` is a required status check (squash titles come from PR titles, so this is what keeps `main` history conventional) |
 | `release.yml` | The project publishes versioned releases | Matches the release shape for its kind: library, desktop app, or service (services need no `release.yml`; `publish.yml` is their release pipeline) |
 
 #### GitHub repository settings
@@ -156,12 +157,12 @@ Check (names are machine-friendly identifiers; report them verbatim):
 | `dismiss-stale-reviews` | `pull_request` rule, `parameters.dismiss_stale_reviews_on_push` | `true` |
 | `require-conversation-resolution` | `pull_request` rule, `parameters.required_review_thread_resolution` | `true` |
 | `codeowners-file` | `.github/CODEOWNERS` in the repo | Exists, with a catch-all `*` rule naming the person who approves merges |
-| `require-ci-checks` | `required_status_checks` rule, `parameters.required_status_checks[].context` | Includes the CI **lint** and **test** job names, and `strict_required_status_checks_policy` is `true` |
+| `require-ci-checks` | `required_status_checks` rule, `parameters.required_status_checks[].context` | Includes the CI **lint** and **test** job names and **pr-title**, and `strict_required_status_checks_policy` is `true` |
 | `no-classic-protection` | second call returns `404` | No classic protection rule on the default branch |
 
 `no-deletion` and `no-force-push` exist because a ruleset permits both unless a rule forbids them, where classic protection forbade them by default. An approval count alone lets two collaborators with Write approve each other's PRs. Code-owner review makes the owner's approval mandatory, and dismissing stale reviews stops a later push from riding an earlier approval. `codeowners-file` is a file check, but it lives here because the rule enforces nothing without it. The catch-all rule names a user or team (`*  @login`), never the org. When auditing by remote, read it with `gh api repos/{owner}/{repo}/contents/.github/CODEOWNERS`. `no-classic-protection` catches repos that predate rulesets: classic and ruleset protection can coexist, and two sources of truth is the failure mode.
 
-For `require-ci-checks`: compare the required contexts against the job names in the project's CI workflow (see the CI workflow area). A job satisfies lint or test if it performs that role even when named differently (e.g., `lint-and-typecheck` covers lint); if no required status check maps to each of lint and test, mark FAIL.
+For `require-ci-checks`: compare the required contexts against the job names in the project's CI workflow (see the CI workflow area). A job satisfies lint or test if it performs that role even when named differently (e.g., `lint-and-typecheck` covers lint); if no required status check maps to each of lint, test, and pr-title, mark FAIL.
 
 Fetch labels:
 ```sh
@@ -232,6 +233,7 @@ Audited: <absolute path>
 - OK   ci.yml triggers on pull_request and push to main
 - FAIL ci.yml has no concurrency group
 - FAIL lint job re-implements biome instead of running just lint
+- OK   pr-guidelines.yml (pr-title required)
 - OK   publish.yml (Dockerfile present)
 - OK   pages.yml not required (Pages off)
 
@@ -264,7 +266,7 @@ Audited: <absolute path>
 - FAIL dismiss-stale-reviews (disabled)
 - OK   require-conversation-resolution
 - OK   codeowners-file (* @login)
-- OK   require-ci-checks (lint, test)
+- OK   require-ci-checks (lint, test, pr-title)
 - FAIL no-classic-protection (classic rule still on main)
 
 ### Labels                       [PASS | FAIL | N/A]
@@ -283,144 +285,7 @@ Each item is `OK` or `FAIL`. Section header is `PASS` if all items OK, `FAIL` if
 
 After the report, ask: "Would you like me to fix any of these issues?"
 
-If the user says yes (or gives a specific list), apply fixes:
-
-**Documentation gaps** — apply the project-docs skill's fix step (its templates, its `<!-- TODO: fill in -->` convention).
-
-**Justfile gaps** — apply the Justfile skill's fix step.
-
-**Other file-based gaps** (`.gitignore`, workflows) — create missing files from scratch or edit existing ones to add missing content. Workflows start from the templates in [workflows.md](workflows.md).
-
-**GitHub settings** — apply with a single PATCH:
-```sh
-gh api repos/{owner}/{repo} \
-  --method PATCH \
-  --field allow_merge_commit=false \
-  --field allow_rebase_merge=false \
-  --field squash_merge_commit_title=PR_TITLE \
-  --field squash_merge_commit_message=BLANK \
-  --field allow_update_branch=true \
-  --field delete_branch_on_merge=true \
-  --field allow_auto_merge=false \
-  --field has_wiki=false \
-  --field has_discussions=false
-```
-Add `--field description="..."` and, when Pages is on, `--field homepage=<pages url>` with values taken from the README.
-
-**Security** — Dependabot on every repo; secret scanning on public repos only (the PATCH fails on private repos without Advanced Security):
-```sh
-gh api repos/{owner}/{repo}/vulnerability-alerts --method PUT
-gh api repos/{owner}/{repo}/automated-security-fixes --method PUT
-gh api repos/{owner}/{repo} --method PATCH --input - <<'EOF'
-{ "security_and_analysis": { "secret_scanning": { "status": "enabled" }, "secret_scanning_push_protection": { "status": "enabled" } } }
-EOF
-```
-
-**CODEOWNERS** — create `.github/CODEOWNERS` with a catch-all rule naming the person who approves merges (the auditing user by default; for an org repo this is still a person, not the org):
-```sh
-mkdir -p .github
-printf '# Default reviewers for any file not matched by a more specific rule\n*\t@%s\n' "$(gh api user --jq .login)" > .github/CODEOWNERS
-```
-The file goes in through a PR like any other change. The ruleset below can be applied at any time, but code-owner review enforces nothing until the file is on the default branch.
-
-**Branch rules** — create a ruleset named after the default branch, substituting the actual lint and test job names from the project's CI workflow. The bypass entry (`RepositoryRole` 5 = repository admin) is the ruleset equivalent of `enforce_admins: false`; release automation that pushes with an admin token depends on it.
-```sh
-gh api repos/{owner}/{repo}/rulesets \
-  --method POST \
-  --input - <<'EOF'
-{
-  "name": "{default_branch}",
-  "target": "branch",
-  "enforcement": "active",
-  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
-  "bypass_actors": [
-    { "actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always" }
-  ],
-  "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
-    {
-      "type": "pull_request",
-      "parameters": {
-        "required_approving_review_count": 1,
-        "dismiss_stale_reviews_on_push": true,
-        "require_code_owner_review": true,
-        "require_last_push_approval": false,
-        "required_review_thread_resolution": true,
-        "allowed_merge_methods": ["squash"]
-      }
-    },
-    {
-      "type": "required_status_checks",
-      "parameters": {
-        "strict_required_status_checks_policy": true,
-        "required_status_checks": [
-          { "context": "lint" },
-          { "context": "test" }
-        ]
-      }
-    }
-  ]
-}
-EOF
-```
-
-If a ruleset already targets the default branch, update it in place with the same body instead of creating a second one:
-```sh
-gh api repos/{owner}/{repo}/rulesets --jq '.[] | select(.target == "branch") | "\(.id) \(.name)"'
-gh api repos/{owner}/{repo}/rulesets/{id} --method PUT --input - <<'EOF'
-...same body...
-EOF
-```
-
-Once the ruleset is active, remove classic protection so there is one source of truth:
-```sh
-gh api repos/{owner}/{repo}/branches/{default_branch}/protection --method DELETE
-```
-
-**Labels** — rename legacy labels first, then create any still missing:
-```sh
-# Rename legacy labels (preserves existing issues/PRs tagged with them)
-gh api repos/{owner}/{repo}/labels/feature       --method PATCH --field name=feat          --field description="New feature (Conventional Commits: feat)" 2>/dev/null
-gh api repos/{owner}/{repo}/labels/bug           --method PATCH --field name=fix           --field description="Bug fix (Conventional Commits: fix)" 2>/dev/null
-gh api repos/{owner}/{repo}/labels/documentation --method PATCH --field name=docs          --field description="Documentation (Conventional Commits: docs)" 2>/dev/null
-
-# Create missing required labels
-gh label create "feat"         --repo {owner}/{repo} --color 0075ca --description "New feature (Conventional Commits: feat)"         --force
-gh label create "fix"          --repo {owner}/{repo} --color d73a4a --description "Bug fix (Conventional Commits: fix)"               --force
-gh label create "chore"        --repo {owner}/{repo} --color e4e669 --description "Chore (Conventional Commits: chore)"               --force
-gh label create "docs"         --repo {owner}/{repo} --color 0075ca --description "Documentation (Conventional Commits: docs)"        --force
-gh label create "refactor"     --repo {owner}/{repo} --color bfd4f2 --description "Code refactor (Conventional Commits: refactor)"    --force
-gh label create "test"         --repo {owner}/{repo} --color bfd4f2 --description "Tests (Conventional Commits: test)"                --force
-gh label create "perf"         --repo {owner}/{repo} --color bfd4f2 --description "Performance improvement (Conventional Commits: perf)" --force
-gh label create "ci"           --repo {owner}/{repo} --color bfd4f2 --description "CI/CD (Conventional Commits: ci)"                  --force
-gh label create "build"        --repo {owner}/{repo} --color bfd4f2 --description "Build system (Conventional Commits: build)"        --force
-gh label create "style"        --repo {owner}/{repo} --color bfd4f2 --description "Code style (Conventional Commits: style)"          --force
-gh label create "revert"       --repo {owner}/{repo} --color e4e669 --description "Revert (Conventional Commits: revert)"             --force
-gh label create "priority"     --repo {owner}/{repo} --color b60205 --description "High priority"                                     --force
-gh label create "nice to have" --repo {owner}/{repo} --color c5def5 --description "Low priority, would be nice"                      --force
-gh label create "wontfix"      --repo {owner}/{repo} --color ffffff --description "Won't fix"                                         --force
-gh label create "question"     --repo {owner}/{repo} --color d876e3 --description "Further information requested"                     --force
-gh label create "invalid"      --repo {owner}/{repo} --color e4e669 --description "This doesn't seem right"                          --force
-gh label create "accessibility" --repo {owner}/{repo} --color f143ab --description "Barrier affecting people with disabilities"        --force
-gh label create "security"     --repo {owner}/{repo} --color 662259 --description "Related to PII, data, host or runtime security"    --force
-
-# Effort (t-shirt size) labels
-gh label create "XS"           --repo {owner}/{repo} --color c2e0c6 --description "Effort: minor update with no code impact (e.g., docs)" --force
-gh label create "S"            --repo {owner}/{repo} --color a2eeef --description "Effort: small, localized change"                       --force
-gh label create "M"            --repo {owner}/{repo} --color fbca04 --description "Effort: moderate change across a few files"           --force
-gh label create "L"            --repo {owner}/{repo} --color d93f0b --description "Effort: large change across multiple areas"           --force
-gh label create "XL"           --repo {owner}/{repo} --color b60205 --description "Effort: project-wide impact (e.g., tooling, monorepo)" --force
-```
-
-Delete forbidden labels:
-```sh
-gh api repos/{owner}/{repo}/labels/good%20first%20issue --method DELETE 2>/dev/null
-gh api repos/{owner}/{repo}/labels/help%20wanted --method DELETE 2>/dev/null
-```
-
-**Manual only:**
-- Social preview — must be uploaded via GitHub Settings → Social preview
+If the user says yes (or gives a specific list), apply fixes using [fixes.md](fixes.md) beside this skill: documentation and Justfile gaps go through the sibling skills' fix steps; `.gitignore` and workflow gaps are file edits (workflows start from [workflows.md](workflows.md)); GitHub settings, security, CODEOWNERS, branch rules, and labels each have their commands there. Label renames and deletions rewrite every issue carrying the label, so confirm those individually before running them. The social preview image is manual.
 
 After fixing, re-audit only the changed areas and confirm they now pass.
 
