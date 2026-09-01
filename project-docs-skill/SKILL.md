@@ -135,6 +135,7 @@ Summary doc names: `requirements.md`, `features.md`, `use-cases.md`, `research.m
 │   └── runbooks/
 └── .github/
     ├── workflows/ci.yml
+    ├── CODEOWNERS                 # required; rules in the project-standards skill
     └── PULL_REQUEST_TEMPLATE.md   # optional
 ```
 

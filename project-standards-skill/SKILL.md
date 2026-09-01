@@ -95,7 +95,9 @@ Resolve the default branch from the `default_branch` field of the `gh api repos/
 gh api repos/{owner}/{repo}/branches/{default_branch}/protection
 ```
 
-A `404 Not Found` means the default branch is unprotected — mark all three checks FAIL.
+A `404 Not Found` means the default branch is unprotected — mark every check in this area FAIL (except `codeowners-file`, which is checked on its own).
+
+A `403` whose message says to upgrade the plan means the repo is private and its owner is on the Free plan, where branch protection is unavailable. Report the whole area as `N/A (private repo, Free plan)`. A private repo that accepts contributors must live in a Team-plan org: Write access is the only way to push branches without forking, and only protection keeps Write from merging. Flag the move under Critical gaps.
 
 Check (names are machine-friendly identifiers; report them verbatim):
 
@@ -103,7 +105,12 @@ Check (names are machine-friendly identifiers; report them verbatim):
 |-------|-------|----------|
 | `branch-protection-enabled` | endpoint returns `200` | Protection exists on the default branch |
 | `require-pr-approval` | `required_pull_request_reviews.required_approving_review_count` | `>= 1` |
+| `require-codeowner-review` | `required_pull_request_reviews.require_code_owner_reviews` | `true` |
+| `dismiss-stale-reviews` | `required_pull_request_reviews.dismiss_stale_reviews` | `true` |
+| `codeowners-file` | `.github/CODEOWNERS` in the repo | Exists, with a catch-all `*` rule naming the person who approves merges |
 | `require-ci-checks` | `required_status_checks.checks[].context` | Includes the CI **lint** and **test** job names |
+
+An approval count alone lets two collaborators with Write approve each other's PRs. Code-owner review makes the owner's approval mandatory, and dismissing stale reviews stops a later push from riding an earlier approval. `codeowners-file` is a file check, but it lives here because the setting enforces nothing without it. The catch-all rule names a user or team (`*  @login`), never the org. When auditing by remote, read it with `gh api repos/{owner}/{repo}/contents/.github/CODEOWNERS`.
 
 For `require-ci-checks`: compare the required contexts against the job names in the project's CI workflow (see the CI workflow area). A job satisfies lint or test if it performs that role even when named differently (e.g., `lint-and-typecheck` covers lint); if no required status check maps to each of lint and test, mark FAIL. If the API returns only the legacy `required_status_checks.contexts` array, check that instead.
 
@@ -184,6 +191,9 @@ Audited: <absolute path>
 ### Branch protection            [PASS | FAIL | N/A]
 - OK   branch-protection-enabled
 - FAIL require-pr-approval (required approvals: 0)
+- OK   require-codeowner-review
+- FAIL dismiss-stale-reviews (disabled)
+- OK   codeowners-file (* @login)
 - OK   require-ci-checks (lint, test)
 
 ### Labels                       [PASS | FAIL | N/A]
@@ -196,7 +206,7 @@ Summary: X/9 areas passing
 Critical gaps: <one-line list of the most important missing things, or "none">
 ```
 
-Each item is `OK` or `FAIL`. Section header is `PASS` if all items OK, `FAIL` if any fail, `MISSING` if the file doesn't exist, `N/A` if no GitHub remote was detected.
+Each item is `OK` or `FAIL`. Section header is `PASS` if all items OK, `FAIL` if any fail, `MISSING` if the file doesn't exist, `N/A` if no GitHub remote was detected, or, for Branch protection only, the repo is private on a Free plan.
 
 ### Step 4 — Offer to fix
 
@@ -221,6 +231,13 @@ gh api repos/{owner}/{repo} \
   --field delete_branch_on_merge=true
 ```
 
+**CODEOWNERS** — create `.github/CODEOWNERS` with a catch-all rule naming the person who approves merges (the auditing user by default; for an org repo this is still a person, not the org):
+```sh
+mkdir -p .github
+printf '# Default reviewers for any file not matched by a more specific rule\n*\t@%s\n' "$(gh api user --jq .login)" > .github/CODEOWNERS
+```
+The file goes in through a PR like any other change. The protection PUT below can be applied at any time, but code-owner review enforces nothing until the file is on the default branch.
+
 **Branch protection** — apply with a single PUT, substituting the actual lint and test job names from the project's CI workflow:
 ```sh
 gh api repos/{owner}/{repo}/branches/{default_branch}/protection \
@@ -236,7 +253,9 @@ gh api repos/{owner}/{repo}/branches/{default_branch}/protection \
   },
   "enforce_admins": false,
   "required_pull_request_reviews": {
-    "required_approving_review_count": 1
+    "required_approving_review_count": 1,
+    "require_code_owner_reviews": true,
+    "dismiss_stale_reviews": true
   },
   "restrictions": null
 }
@@ -294,3 +313,4 @@ After fixing, re-audit only the changed areas and confirm they now pass.
 - For CI: if the workflow file has a different name, still check it. If there are multiple workflow files, audit the most likely main CI gate.
 - App-vs-library classification (used by both sibling skills): look at whether the project has a start script, server code, or deployment config — if yes, treat it as an app.
 - If a label already exists with the wrong color or description, mark it OK (name match is sufficient) — do not modify unless the user explicitly asks.
+- A `403` on the protection endpoint is a plan limit, not a missing setting. Do not retry with rulesets or classic protection variants; report `N/A` and, if the repo takes contributors, the Team-org move.
