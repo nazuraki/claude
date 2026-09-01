@@ -97,6 +97,26 @@ Check:
 | REST | `delete_branch_on_merge` | `true` |
 | GraphQL | `usesCustomOpenGraphImage` | `true` |
 
+#### Branch protection
+
+Resolve the default branch from the `default_branch` field of the `gh api repos/{owner}/{repo}` response already fetched above, then:
+
+```sh
+gh api repos/{owner}/{repo}/branches/{default_branch}/protection
+```
+
+A `404 Not Found` means the default branch is unprotected — mark all three checks FAIL.
+
+Check (names are machine-friendly identifiers; report them verbatim):
+
+| Check | Field | Expected |
+|-------|-------|----------|
+| `branch-protection-enabled` | endpoint returns `200` | Protection exists on the default branch |
+| `require-pr-approval` | `required_pull_request_reviews.required_approving_review_count` | `>= 1` |
+| `require-ci-checks` | `required_status_checks.checks[].context` | Includes the CI **lint** and **test** job names |
+
+For `require-ci-checks`: compare the required contexts against the job names in the project's CI workflow (see the CI workflow area). A job satisfies lint or test if it performs that role even when named differently (e.g., `lint-and-typecheck` covers lint); if no required status check maps to each of lint and test, mark FAIL. If the API returns only the legacy `required_status_checks.contexts` array, check that instead.
+
 Fetch labels:
 ```sh
 gh api repos/{owner}/{repo}/labels --paginate
@@ -163,13 +183,18 @@ Audited: <absolute path>
 - FAIL Auto-delete head branches (disabled)
 - FAIL Social preview image (not set)
 
+### Branch protection            [PASS | FAIL | N/A]
+- OK   branch-protection-enabled
+- FAIL require-pr-approval (required approvals: 0)
+- OK   require-ci-checks (lint, test)
+
 ### Labels                       [PASS | FAIL | N/A]
 - FAIL Missing: perf, ci, style
 - FAIL Forbidden present: good first issue
 - OK   All other required labels present
 
 ---
-Summary: X/7 areas passing
+Summary: X/8 areas passing
 Critical gaps: <one-line list of the most important missing things, or "none">
 ```
 
@@ -192,6 +217,28 @@ gh api repos/{owner}/{repo} \
   --field squash_merge_commit_title=PR_TITLE \
   --field allow_update_branch=true \
   --field delete_branch_on_merge=true
+```
+
+**Branch protection** — apply with a single PUT, substituting the actual lint and test job names from the project's CI workflow:
+```sh
+gh api repos/{owner}/{repo}/branches/{default_branch}/protection \
+  --method PUT \
+  --input - <<'EOF'
+{
+  "required_status_checks": {
+    "strict": true,
+    "checks": [
+      { "context": "lint" },
+      { "context": "test" }
+    ]
+  },
+  "enforce_admins": false,
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 1
+  },
+  "restrictions": null
+}
+EOF
 ```
 
 **Labels** — rename legacy labels first, then create any still missing:
@@ -245,4 +292,3 @@ After fixing, re-audit only the changed areas and confirm they now pass.
 - For CI: if the workflow file has a different name, still check it. If there are multiple workflow files, audit the most likely main CI gate.
 - For Justfile app-type classification: look at whether the project has a start script, server code, or deployment config — if yes, treat it as an app.
 - If a label already exists with the wrong color or description, mark it OK (name match is sufficient) — do not modify unless the user explicitly asks.
-- If the `main` branch doesn't exist, try `master` for branch protection. If neither, skip that check.
