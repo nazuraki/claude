@@ -7,6 +7,8 @@ Templates used by the project-docs skill's `new` and fix steps. Keep `<!-- TODO:
 ```markdown
 # <project-name>
 
+**Status:** <research | planning | in progress | alpha | beta | production>
+
 <one-sentence description>
 
 ## Prerequisites

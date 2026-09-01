@@ -28,12 +28,25 @@ The documents every project carries, what each one is for, and where it lives. L
 
 | Document | Purpose | Contents |
 |----------|---------|----------|
-| `README.md` | Front door for a new reader | Project name and one-sentence description; prerequisites (runtime versions, required env vars); quickstart command (`just install` then `just dev` or equivalent); link to `docs/PURPOSE.md`; license line |
+| `README.md` | Front door for a new reader | Status flag on the first line after the H1 (see below); project name and one-sentence description; prerequisites (runtime versions, required env vars); quickstart command (`just install` then `just dev` or equivalent); link to `docs/PURPOSE.md`; license line |
 | `docs/PURPOSE.md` | Why the project exists | Problem being solved (1–3 paragraphs); explicit non-goals; intended audience or users |
 | `CONTEXT.md` | Working context for humans and agents | Architectural decisions not visible in code; business rules and thresholds (canonical definition, even if also in code); deployment topology; env var semantics; external contracts not yet implemented; open questions and deferred decisions |
 | `CLAUDE.md` | Agent instructions only | Commands, conventions, guardrails. No project narrative — that belongs in `CONTEXT.md`, which `CLAUDE.md` may reference |
 | `LICENSE` | Legal terms | Full license text; the README states the license name |
 | `Justfile` | Task entry point | Defined by the Justfile skill (`/justfile`) — not covered here |
+
+**Status flag.** The root README states the project's lifecycle stage on the line immediately after the H1, as `**Status:** <stage>`. Allowed stages, in order:
+
+| Stage | Meaning |
+|-------|---------|
+| `research` | Investigating whether and how to build it; no committed scope |
+| `planning` | Scope agreed, design underway, little or no code |
+| `in progress` | Actively being built; not usable end to end |
+| `alpha` | Usable by the team; incomplete and unstable |
+| `beta` | Feature complete for the intended audience; stabilizing |
+| `production` | Released and supported |
+
+Add `(archived)` after the stage for a project no longer maintained, e.g. `**Status:** beta (archived)`. Update the flag in the same change that moves the project between stages. In a monorepo, only the root README carries the flag; a package README may carry its own only when the package is independently published.
 
 `README.md` is for someone who has never seen the project. `CONTEXT.md` is for someone about to change it. `docs/PURPOSE.md` is for someone deciding whether it should exist. Keep those audiences separate; do not merge the files.
 
@@ -205,6 +218,7 @@ Ask: "If this package were deleted, would this document still be true?" If yes, 
 
 ### Root
 OK       README.md
+FAIL     README.md — no status flag (expected **Status:** <stage> under the H1)
 FAIL     README.md — no prerequisites section
 MISSING  docs/PURPOSE.md
 FAIL     CONTEXT.md — contains a file tree (derivable; remove)

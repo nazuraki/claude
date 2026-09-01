@@ -147,6 +147,7 @@ Use this exact format:
 Audited: <absolute path>
 
 ### README.md                    [PASS | FAIL | MISSING]
+- FAIL No status flag under the H1
 - OK   Has project name and description
 - FAIL Missing prerequisites section
 - OK   Quickstart command present (just dev)
