@@ -11,7 +11,7 @@ Two areas are owned by sibling skills and this skill defers to them rather than 
 
 | Area | Owning skill | Read before auditing |
 |------|--------------|----------------------|
-| Documentation (`README.md`, `docs/PURPOSE.md`, `CONTEXT.md`, `CLAUDE.md`, `LICENSE`, `docs/` layout, monorepo package docs) | `/project-docs` | `~/.claude/skills/project-docs/SKILL.md` |
+| Documentation (`README.md`, `docs/PURPOSE.md`, `CONTEXT.md`, `CLAUDE.md`, `LICENSE`, `docs/` detail directories and summary docs, monorepo package docs) | `/project-docs` | `~/.claude/skills/project-docs/SKILL.md` |
 | `Justfile` (required recipes, naming, structure, monorepo modules) | `/justfile` | `~/.claude/skills/justfile/SKILL.md` |
 
 If a rule here ever disagrees with the owning skill, the owning skill wins.
@@ -43,7 +43,7 @@ Carry its findings into this report as three sections:
 
 - **README.md** — the root README checks
 - **docs/PURPOSE.md** — the purpose doc checks
-- **Other docs** — `CONTEXT.md`, `CLAUDE.md`, `LICENSE`, optional-doc triggers, "never" violations, and (monorepo) one line per package README
+- **Other docs** — `CONTEXT.md`, `CLAUDE.md`, `LICENSE`, detail directories (`docs/requirements/`, `features/`, `use-cases/`, `research/`, `decisions/`, `design/`, `runbooks/`) and their summary docs, optional-doc triggers, "never" violations, and (monorepo) one line per package README
 
 #### .gitignore
 
@@ -160,6 +160,7 @@ Audited: <absolute path>
 - OK   CONTEXT.md present with open-questions section
 - FAIL CLAUDE.md contains project narrative (belongs in CONTEXT.md)
 - OK   LICENSE present
+- FAIL docs/decisions.md missing entry for 0003-adopt-pnpm.md
 - FAIL apps/web/README.md missing        (monorepo only)
 
 ### .gitignore                   [PASS | FAIL | MISSING]

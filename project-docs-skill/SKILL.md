@@ -18,6 +18,7 @@ The documents every project carries, what each one is for, and where it lives. L
 - **Docs record what code cannot.** Intent, decisions, business rules, external contracts, deployment topology, open questions. Anything derivable from the codebase (file trees, route lists, symbol names, dependency versions, constants) does not belong in a doc — it goes stale and tooling answers it faster.
 - **One canonical home per fact.** If a fact appears in two documents, one of them links to the other.
 - **Docs live next to what they describe.** Cross-cutting docs at the root; package-specific docs in the package.
+- **Every detail directory has a summary doc.** Nobody should have to open a folder to learn what is in it (see [Detail directories](#detail-directories-and-summary-docs)).
 - **Short files.** A document over ~200 lines is a sign it should split or shed derivable content.
 - **Every document is Markdown**, has an H1 matching its purpose, and uses relative links.
 
@@ -38,25 +39,59 @@ The documents every project carries, what each one is for, and where it lives. L
 
 `CONTEXT.md` is updated as the final step of every implementation task. Its **Open questions** section is the most valuable part of the file — never trim it.
 
-### Optional — create only when the trigger applies
+### Detail directories — create when applicable
+
+Each of these is a directory of individual detail files under `docs/`, paired with a summary doc (rules in the next section).
+
+| Directory | Holds | Create when | Detail file naming |
+|-----------|-------|-------------|--------------------|
+| `docs/requirements/` | What the system must do or guarantee: functional and non-functional requirements, constraints, acceptance criteria | Requirements come from stakeholders or span more than one issue, so they need a home outside the issue tracker | `<kebab-area>.md`, one area per file (e.g. `authentication.md`, `performance.md`) |
+| `docs/features/` | What the product does from the user's point of view, one feature per file: behaviour, scope, out-of-scope, links to the requirements and use cases it satisfies | The product has user-facing features whose behaviour must be agreed before or after building | `<kebab-feature>.md` |
+| `docs/use-cases/` | Actor–goal interactions: primary flow, alternate flows, preconditions, postconditions | User interactions need to be spelled out step by step. Write them with the `write-use-cases` skill when it is available | `<kebab-actor-goal>.md` (e.g. `admin-revokes-api-key.md`) |
+| `docs/research/` | Investigations that informed a decision: spikes, technology evaluations, benchmarks, competitor or prior-art surveys, findings and recommendations | An investigation produces findings worth keeping. A research doc feeds a decision; it does not make one | `<kebab-topic>.md`, with the date of the investigation in the front matter or first line |
+| `docs/decisions/` | Architecture Decision Records: context, decision, consequences, status | An architectural decision is made that a future reader will question. One decision per file, never edited after acceptance — supersede with a new one | `NNNN-<kebab-title>.md`, four-digit zero-padded from `0001` |
+| `docs/design/` | Design docs and technical specs for a feature or subsystem: approach, alternatives, data model, interfaces | A change is large enough to need a design before implementation | `<kebab-title>.md` |
+| `docs/runbooks/` | Operational procedures: deploy, rollback, incident response, routine maintenance | The project is operated in production | `<kebab-procedure>.md` |
+
+The flow between them: **research** informs **decisions**; **requirements** and **use cases** define what a **feature** must do; **design** says how it will be built; **runbooks** say how it is operated. A detail file links to the files it derives from or satisfies.
+
+### Optional root documents
 
 | Document | Create when |
 |----------|-------------|
 | `CHANGELOG.md` | The project publishes versioned releases. Otherwise PR history is the changelog |
 | `CONTRIBUTING.md` | The repo accepts outside contributions. Otherwise a short "Contributing" section in the README suffices |
-| `docs/decisions/NNNN-<kebab-title>.md` | An architectural decision is made that a future reader will question. One decision per file, numbered sequentially, never edited after acceptance — supersede with a new one |
-| `docs/design/<kebab-title>.md` | A feature or subsystem needs a design doc, spec, or PRD before implementation |
-| `docs/runbooks/<kebab-title>.md` | The project is operated in production and has procedures (deploy, rollback, incident response) |
 | `.github/PULL_REQUEST_TEMPLATE.md` | The team wants a fixed PR checklist |
 | `.github/ISSUE_TEMPLATE/` | The repo receives issues from people outside the core team |
 
-Do not create `docs/` subfolders speculatively. A folder exists only when a file exists to put in it.
-
 ### Never
 
+- A `docs/` subfolder created speculatively — a folder exists only when a file exists to put in it
 - Auto-generated API reference committed to the repo (generate in CI or on demand instead)
 - A `docs/` mirror of the README
 - Per-directory README files inside a single project's source tree (`src/foo/README.md`) — use a comment header or `CONTEXT.md`
+
+## Detail directories and summary docs
+
+Every detail directory `docs/<area>/` has a companion summary doc `docs/<area>.md` beside it. The summary is the index and the reader's entry point; the directory holds the detail.
+
+```
+docs/
+├── decisions.md          # summary: one line per ADR, linked
+└── decisions/
+    ├── 0001-use-postgres.md
+    └── 0002-drop-redis-cache.md
+```
+
+Rules:
+
+- **Created together.** The summary doc is created with the first detail file, and the directory is never created without one.
+- **Complete.** Every file in the directory has an entry in the summary; every entry links to a file that exists. No orphans, no dangling links.
+- **One line per file.** Each entry is the file's title, a one-sentence summary, its status where the type has one (requirements: `draft` / `agreed` / `retired`; decisions: `proposed` / `accepted` / `superseded by NNNN`; research: `open` / `concluded`), and a relative link. Longer commentary belongs in the detail file.
+- **Updated in the same change** that adds, supersedes, or retires a detail file.
+- **Opens with a short overview** — one paragraph on what the directory covers and how it is organized, then the table.
+
+Summary doc names: `requirements.md`, `features.md`, `use-cases.md`, `research.md`, `decisions.md`, `design.md`, `runbooks.md`.
 
 ## Single-project layout
 
@@ -71,9 +106,20 @@ Do not create `docs/` subfolders speculatively. A folder exists only when a file
 ├── CONTRIBUTING.md         # optional
 ├── docs/
 │   ├── PURPOSE.md
-│   ├── decisions/          # optional, ADRs
-│   ├── design/             # optional
-│   └── runbooks/           # optional
+│   ├── requirements.md     # summary  ┐ when applicable
+│   ├── requirements/       # detail   ┘
+│   ├── features.md
+│   ├── features/
+│   ├── use-cases.md
+│   ├── use-cases/
+│   ├── research.md
+│   ├── research/
+│   ├── decisions.md
+│   ├── decisions/
+│   ├── design.md
+│   ├── design/
+│   ├── runbooks.md
+│   └── runbooks/
 └── .github/
     ├── workflows/ci.yml
     └── PULL_REQUEST_TEMPLATE.md   # optional
@@ -92,15 +138,22 @@ A monorepo is one product delivered as several packages (apps, libraries, servic
 ├── Justfile                # root recipes + `mod` per package (see Justfile skill)
 ├── docs/
 │   ├── PURPOSE.md          # purpose of the product as a whole
-│   ├── decisions/          # single ADR sequence for the whole repo
-│   ├── design/             # cross-package designs
-│   └── runbooks/
+│   ├── requirements.md, requirements/   # product-level and cross-package
+│   ├── features.md, features/           # features spanning packages
+│   ├── use-cases.md, use-cases/         # product-level use cases
+│   ├── research.md, research/           # research that informed repo-wide decisions
+│   ├── decisions.md, decisions/         # single ADR sequence for the whole repo
+│   ├── design.md, design/               # cross-package designs
+│   └── runbooks.md, runbooks/           # product-level operations
 ├── apps/<app>/
 │   ├── README.md           # required
 │   ├── CONTEXT.md          # only if the app has decisions the rest of the repo needn't know
 │   ├── CLAUDE.md           # only for app-specific conventions
 │   ├── Justfile            # per-package module
-│   └── docs/design/        # only for app-specific designs
+│   └── docs/               # only package-scoped detail directories, each with its summary
+│       ├── features.md, features/
+│       ├── design.md, design/
+│       └── runbooks.md, runbooks/
 └── packages/<lib>/
     ├── README.md           # required
     └── ...                 # same rules as apps/
@@ -111,7 +164,8 @@ A monorepo is one product delivered as several packages (apps, libraries, servic
 - **`README.md`** is a map, not a manual. It holds the product's one-sentence description, prerequisites that apply repo-wide, the workspace-level quickstart, a table of packages (name, one-line purpose, link to its README), and the license line. Package-specific instructions do not belong here.
 - **`docs/PURPOSE.md`** covers the product. Packages do not get their own unless independently published (see below).
 - **`CONTEXT.md`** holds only what spans packages: shared contracts between packages, deployment topology, repo-wide business rules, open questions that touch more than one package. Link to package `CONTEXT.md` files where they exist.
-- **`docs/decisions/`** is the only ADR sequence. Decisions in a monorepo almost always affect more than one package; a single numbering avoids two ADR 0007s.
+- **`docs/decisions/`** is the only ADR sequence. Decisions in a monorepo almost always affect more than one package; a single numbering avoids two ADR 0007s. Package-scoped decisions still live here, tagged with the package in the title.
+- **`docs/requirements/`**, **`docs/use-cases/`**, and **`docs/research/`** stay at the root by default — requirements and use cases describe the product, and research informs product-level decisions. Only a package that is independently published gets its own.
 - **`CLAUDE.md`** carries repo-wide conventions. Claude Code also loads a nested `CLAUDE.md` when working inside a package, so package-level files must add to the root, never repeat it.
 
 ### Package documents in a monorepo
@@ -120,7 +174,8 @@ A monorepo is one product delivered as several packages (apps, libraries, servic
 - **`CONTEXT.md`** is allowed when the package has decisions, rules, or open questions the rest of the repo does not need. The root `CONTEXT.md` links to it.
 - **`docs/PURPOSE.md`** appears only when the package is published on its own (a library on npm, a standalone CLI). Otherwise the product's purpose is the package's purpose.
 - **`CHANGELOG.md`** appears only for independently versioned packages.
-- **`docs/design/`** holds designs scoped to that package only. A design that touches two packages goes in the root `docs/design/`.
+- **`docs/features/`**, **`docs/design/`**, **`docs/runbooks/`** hold items scoped to that package only, each with its summary doc. An item that touches two packages goes in the root directory of the same name.
+- Package summary docs may link into root detail files (a package feature satisfying a root requirement); root summaries never link into package directories except from the root `README.md` package table.
 
 ### Deciding root vs. package
 
@@ -140,9 +195,10 @@ Ask: "If this package were deleted, would this document still be true?" If yes, 
 1. Detect repo type: a monorepo has a workspace manifest (`pnpm-workspace.yaml`, `package.json` `workspaces`, `go.work`, Cargo `[workspace]`) or an `apps/` / `packages/` split. Otherwise single project.
 2. Inventory every document listed in the catalog, at the root and (for monorepos) in each package.
 3. For each required document: check presence, then check each listed content item.
-4. For each optional document: check that its trigger applies if present, and flag any that should exist (e.g., a deployed app with no runbooks, a versioned library with no changelog).
-5. Flag documents that violate **Never**, and content that is derivable from code.
-6. Report in this format:
+4. For each detail directory present: check the summary doc exists, lists every file, has no dangling links, and carries status where the type has one. Check detail files follow the naming rule for their type.
+5. For each detail directory or optional document absent: flag it when its trigger clearly applies (a deployed app with no runbooks, a versioned library with no changelog, ADRs referencing a spike that has no research doc).
+6. Flag documents that violate **Never**, content that is derivable from code, and package docs that belong at the root or vice versa.
+7. Report in this format:
 
 ```
 ## Project docs audit: <project>   (<single project | monorepo, N packages>)
@@ -154,108 +210,26 @@ MISSING  docs/PURPOSE.md
 FAIL     CONTEXT.md — contains a file tree (derivable; remove)
 OK       CLAUDE.md
 OK       LICENSE
+FAIL     docs/decisions.md — missing entry for 0003-adopt-pnpm.md
+MISSING  docs/runbooks/ — project has a deploy recipe but no runbooks
+OK       docs/research.md
 
 ### apps/web            (monorepo only)
 MISSING  README.md
 OK       CONTEXT.md
+FAIL     docs/design/ — no docs/design.md summary
 
 Summary: X/Y documents passing
 ```
 
-7. Ask: "Would you like me to fix any of these?" On yes, create missing files from the templates below and edit existing ones. Where content needs human input, write `<!-- TODO: fill in -->`.
+8. Ask: "Would you like me to fix any of these?" On yes, create missing files from the templates below and edit existing ones. Where content needs human input, write `<!-- TODO: fill in -->`. When generating a missing summary doc, derive each entry's title and one-line summary from the detail file's H1 and first paragraph.
 
 ## Templates
 
-`README.md`:
-
-```markdown
-# <project-name>
-
-<one-sentence description>
-
-## Prerequisites
-
-- <runtime> <version>
-- Environment: `<VAR>` — <what it does>
-
-## Quickstart
-
-    just install
-    just dev
-
-See [docs/PURPOSE.md](docs/PURPOSE.md) for why this project exists.
-
-## License
-
-<license name> — see [LICENSE](LICENSE).
-```
-
-`docs/PURPOSE.md`:
-
-```markdown
-# Purpose
-
-## Problem
-
-<!-- TODO: 1–3 paragraphs -->
-
-## Non-goals
-
-- <!-- TODO -->
-
-## Audience
-
-<!-- TODO -->
-```
-
-`CONTEXT.md`:
-
-```markdown
-# Context
-
-## Decisions
-
-<!-- Architectural choices not visible in code, and what was ruled out -->
-
-## Rules and thresholds
-
-<!-- Business rules; canonical definitions -->
-
-## Deployment
-
-<!-- Topology, how traffic arrives, what handles access control -->
-
-## Environment
-
-- `<VAR>` — <semantics>
-
-## External contracts
-
-<!-- Expected schemas and interfaces not yet implemented -->
-
-## Open questions
-
-- <!-- Never trim this section -->
-```
-
-Monorepo package `README.md`:
-
-```markdown
-# <package-name>
-
-<one sentence: what it is and how it fits into the product>. Part of [<product>](../../README.md).
-
-## Prerequisites
-
-<!-- Only what differs from the root -->
-
-## Tasks
-
-    just <package> dev
-    just <package> test
-```
+Templates for every document above are in [templates.md](templates.md) alongside this skill. Read that file when scaffolding or fixing.
 
 ## Related skills
 
 - `/project-standards` — audits the whole project; uses this skill for its documentation checks
 - `/justfile` — the Justfile is a required file but its rules live there
+- `write-use-cases` — authoring guidance for files under `docs/use-cases/`
