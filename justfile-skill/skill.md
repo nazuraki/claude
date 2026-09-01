@@ -77,6 +77,26 @@ dev:
     pnpm --filter <package> dev
 ```
 
+**Monorepo sub-project Justfiles** — when workspace packages have their own Justfiles,
+the root Justfile includes each one as a just module, immediately after the header
+comment and before `default`:
+
+```just
+mod <workspace> 'packages/<workspace>/Justfile'
+```
+
+Rules:
+- Module recipes are invoked namespaced: `just <workspace> test`, `just <workspace> lint`.
+- Each sub-project Justfile follows the full standard recipe set, scoped to its package
+  (module recipes run with the sub-project directory as working directory, so plain
+  `pnpm run <script>` works).
+- The root Justfile still carries its own workspace-wide standard recipes
+  (`install`, `check`, `lint`, `typecheck`, `test`, `clean`, `fresh`) using
+  `pnpm -r run <script>` — modules complement, never replace, the root set.
+- Sub-project `install` runs plain `pnpm install` (installs the whole workspace) with
+  a comment noting that; `clean` removes only that package's `dist`, `node_modules`,
+  and `coverage`.
+
 **Docker recipes** (containerized apps only) — insert after `build`:
 
 ```just
