@@ -40,10 +40,10 @@ The documents every project carries, what each one is for, and where it lives. L
 | Stage | Meaning | Markdown |
 |-------|---------|----------|
 | research | Investigating whether and how to build it; no committed scope | `![Status: research](https://img.shields.io/badge/status-research-lightgrey)` |
-| planning | Scope agreed, design underway, little or no code | `![Status: planning](https://img.shields.io/badge/status-planning-blue)` |
+| planning | Scope agreed, design underway, little or no code | `![Status: planning](https://img.shields.io/badge/status-planning-red)` |
 | in progress | Actively being built; not usable end to end | `![Status: in progress](https://img.shields.io/badge/status-in_progress-orange)` |
-| alpha | Usable by the team; incomplete and unstable | `![Status: alpha](https://img.shields.io/badge/status-alpha-red)` |
-| beta | Feature complete for the intended audience; stabilizing | `![Status: beta](https://img.shields.io/badge/status-beta-yellow)` |
+| alpha | Usable by the team; incomplete and unstable | `![Status: alpha](https://img.shields.io/badge/status-alpha-yellow)` |
+| beta | Feature complete for the intended audience; stabilizing | `![Status: beta](https://img.shields.io/badge/status-beta-blue)` |
 | production | Released and supported | `![Status: production](https://img.shields.io/badge/status-production-brightgreen)` |
 
 For a project no longer maintained, keep the stage badge and add `![Archived](https://img.shields.io/badge/archived-inactive)` on the same line. Other badges (CI, license, version) may follow on the same line, but the status badge comes first. Update the badge in the same change that moves the project between stages. In a monorepo, only the root README carries the badge; a package README may carry its own only when the package is independently published.
