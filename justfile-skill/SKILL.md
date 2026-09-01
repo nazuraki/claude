@@ -1,4 +1,9 @@
-# Justfile Skill
+---
+name: justfile
+description: "Write or audit a project's Justfile against the standard recipe set (install/check/lint/fix/typecheck/test/clean/fresh plus app, Docker, compose, deploy, and monorepo module recipes). Use whenever the user asks to create, review, fix, or standardize a Justfile, or '/justfile'."
+---
+
+# Justfile
 
 Write or audit a project's Justfile for consistency with the standard recipe set.
 
@@ -198,3 +203,8 @@ OK       install, dev, check, run
 
 4. Apply all fixes with Edit tool (or Write for a new file)
 5. Show the final Justfile after edits
+
+## Related skills
+
+- `/project-standards` — full project audit; defers to this skill for the Justfile area
+- `/project-docs` — the documents a project must carry; the Justfile is listed there but its rules live here
