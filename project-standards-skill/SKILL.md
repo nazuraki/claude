@@ -80,7 +80,8 @@ The main gate is `.github/workflows/ci.yml`:
 - Node version comes from `node-version-file: .nvmrc` (the file is committed), never an inline `node-version`
 - All action versions are pinned to a major tag or SHA, never `@latest` or `@main`
 - `actions/checkout` is v6 or newer
-- Has a multi-platform or multi-version test matrix where the runtime warrants it
+- Matrix jobs are named after what varies, in terms a developer recognizes: the package in a monorepo (`test (core)`, `test (bot)`), the platform for a desktop app (`build (macos)`). Never a bare runtime version: `test (22)` says nothing. A Node-version matrix is only for a published library that supports more than one major, and then the name carries both: `test (core, node 22)`
+- In a monorepo the matrix job is `test-package` and a gate job `test` depends on it, so the ruleset requires `test` and never has to list packages (see the monorepo variant in workflows.md)
 
 Secondary workflows are specified in [workflows.md](workflows.md). Check each one whose trigger applies:
 
