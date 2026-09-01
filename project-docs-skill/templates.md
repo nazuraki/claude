@@ -26,6 +26,7 @@ See [docs/PURPOSE.md](docs/PURPOSE.md) for why this project exists.
 ## License
 
 <license name> — see [LICENSE](LICENSE).
+<!-- private repo: "Proprietary — © <owner>. All rights reserved." and no LICENSE file -->
 ```
 
 `docs/PURPOSE.md`:
