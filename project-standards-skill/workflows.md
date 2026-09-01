@@ -58,7 +58,31 @@ jobs:
       - run: just docker-build
 ```
 
-Swap the setup steps for the project's runtime (`actions/setup-python`, `dtolnay/rust-toolchain@stable` plus `Swatinem/rust-cache`). Add a `strategy.matrix` on the `test` job when the project supports more than one runtime version or platform.
+Swap the setup steps for the project's runtime (`actions/setup-python`, `dtolnay/rust-toolchain@stable` plus `Swatinem/rust-cache`).
+
+**Monorepo variant.** `lint` stays a single root job (`just lint`, `just typecheck` run workspace-wide). Tests run per package through the Justfile modules, named so a developer can tell which package failed, behind a gate job that the ruleset requires:
+
+```yaml
+  test-package:
+    name: test (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [core, bot]          # every Justfile module with a test recipe
+    steps:
+      # checkout, setup-just, runtime setup, install as above
+      - run: just ${{ matrix.package }} test
+
+  test:
+    needs: test-package
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.test-package.result }}" = success
+```
+
+Checks show as `test (core)`, `test (bot)`, and `test`; the ruleset requires `lint`, `test`, and `pr-title` only, so adding a package never touches the ruleset. Name matrix entries after what varies. A runtime version on its own is not a name: use a version matrix only for a published library that supports more than one major, and then name it `test (core, node 22)`. Desktop apps matrix over platform: `build (macos)`, `build (windows)`.
 
 ## `pr-guidelines.yml` — PR title lint
 
