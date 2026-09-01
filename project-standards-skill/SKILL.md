@@ -16,6 +16,8 @@ Two areas are owned by sibling skills and this skill defers to them rather than 
 
 If a rule here ever disagrees with the owning skill, the owning skill wins.
 
+Workflow templates for the CI area (`ci.yml`, `publish.yml`, `pages.yml`, the release shapes) live in [workflows.md](workflows.md) beside this skill. Read it when auditing or fixing workflows.
+
 ## Invocation
 
 - `/project-standards` — audit the current working directory
@@ -52,21 +54,41 @@ Carry its findings into this report as three sections:
 - Ignores `.env` and `.env.*` variants
 - Ignores IDE directories (`.idea/`, `.vscode/`)
 - Ignores OS files (`.DS_Store`, `Thumbs.db`)
-- Ignores local-only config (e.g., `settings.local.json`)
+- Ignores Claude Code local state with exactly these three entries. Ignoring `.claude/` as a whole is a FAIL: it hides committed skills, agents, and shared settings.
+  ```
+  .claude/settings.local.json
+  .claude/launch.json
+  .claude/scheduled_tasks.lock
+  ```
 
 #### Justfile
 
 Read the Justfile skill, then run its audit process against this project's Justfile (root Justfile plus per-package modules in a monorepo). Each `MISSING`, `RENAME`, or structural finding from that audit becomes a `FAIL` line here; `OK` lines carry over as `OK`. Do not apply the Justfile skill's fixes during the audit — fixes happen in Step 4.
 
-#### .github/workflows/ci.yml
+#### CI workflows
+
+The main gate is `.github/workflows/ci.yml`:
 
 - File exists (check for any `.github/workflows/*.yml` if the exact name differs)
 - Triggers on `pull_request` events (PR open and update) — this is the critical gate
 - Also triggers on `push` to `main`
-- Has at least two jobs covering lint/typecheck and tests
-- All action versions are pinned to a specific tag (not `@latest`)
+- `concurrency` group `${{ github.workflow }}-${{ github.ref }}` with `cancel-in-progress: true`
+- Top-level `permissions: contents: read`
+- Jobs are named `lint` and `test`. `lint` runs `just lint` then `just typecheck`; `test` runs `just test`, each after `extractions/setup-just`. CI never re-implements what the Justfile defines, so job names map 1:1 onto required status checks
+- A `docker` job running `just docker-build` when the repo has a Dockerfile
+- Dependencies install from the lockfile (`pnpm install --frozen-lockfile`, `npm ci`, `cargo build --locked`)
+- Node version comes from `node-version-file: .nvmrc` (the file is committed), never an inline `node-version`
+- All action versions are pinned to a major tag or SHA, never `@latest` or `@main`
 - `actions/checkout` is v6 or newer
 - Has a multi-platform or multi-version test matrix where the runtime warrants it
+
+Secondary workflows are specified in [workflows.md](workflows.md). Check each one whose trigger applies:
+
+| Workflow | Required when | Check |
+|----------|---------------|-------|
+| `publish.yml` | Repo has a Dockerfile and deploys as a container | Exists under that name; runs on `push` to `main` and `v*` tags; pushes to GHCR with `latest`, `sha-*`, and semver tags; `permissions: packages: write`; concurrency per ref |
+| `pages.yml` | GitHub Pages is enabled (`gh api repos/{owner}/{repo}/pages` returns `200`) | Exists under that name; `build_type` is `workflow`; deploys with `actions/deploy-pages` from the `github-pages` environment; repo `homepage` is the Pages URL |
+| `release.yml` | The project publishes versioned releases | Matches the release shape for its kind: library, desktop app, or service (services need no `release.yml`; `publish.yml` is their release pipeline) |
 
 #### GitHub repository settings
 
@@ -83,9 +105,31 @@ Check:
 | REST | `allow_merge_commit` | `false` |
 | REST | `allow_rebase_merge` | `false` |
 | REST | `squash_merge_commit_title` | `"PR_TITLE"` |
+| REST | `squash_merge_commit_message` | `"BLANK"` |
 | REST | `allow_update_branch` | `true` |
 | REST | `delete_branch_on_merge` | `true` |
-| GraphQL | `usesCustomOpenGraphImage` | `true` |
+| REST | `allow_auto_merge` | `false` |
+| REST | `description` | Non-empty |
+| REST | `homepage` | The Pages URL when Pages is enabled; otherwise anything |
+| REST | `has_wiki` | `false` — docs live in the repo |
+| REST | `has_discussions` | `false` unless the repo actually uses discussions |
+| GraphQL | `usesCustomOpenGraphImage` | `true` (public repos; `N/A` on private) |
+
+#### Security
+
+Dependabot state needs two more calls; secret scanning is in the `security_and_analysis` field of the base settings already fetched.
+
+```sh
+gh api repos/{owner}/{repo}/vulnerability-alerts -i      # 204 = enabled, 404 = disabled
+gh api repos/{owner}/{repo}/automated-security-fixes      # {"enabled": true|false}
+```
+
+| Check | Where | Expected |
+|-------|-------|----------|
+| `dependabot-alerts` | `vulnerability-alerts` returns `204` | Enabled on every repo (free on private) |
+| `dependabot-security-updates` | `automated-security-fixes.enabled` | `true` |
+| `secret-scanning` | `security_and_analysis.secret_scanning.status` | `enabled` on public repos; `N/A` on private (needs Advanced Security) |
+| `secret-scanning-push-protection` | `security_and_analysis.secret_scanning_push_protection.status` | `enabled` on public repos; `N/A` on private |
 
 #### Branch rules
 
@@ -110,6 +154,7 @@ Check (names are machine-friendly identifiers; report them verbatim):
 | `require-pr-approval` | `pull_request` rule, `parameters.required_approving_review_count` | `>= 1` |
 | `require-codeowner-review` | `pull_request` rule, `parameters.require_code_owner_review` | `true` |
 | `dismiss-stale-reviews` | `pull_request` rule, `parameters.dismiss_stale_reviews_on_push` | `true` |
+| `require-conversation-resolution` | `pull_request` rule, `parameters.required_review_thread_resolution` | `true` |
 | `codeowners-file` | `.github/CODEOWNERS` in the repo | Exists, with a catch-all `*` rule naming the person who approves merges |
 | `require-ci-checks` | `required_status_checks` rule, `parameters.required_status_checks[].context` | Includes the CI **lint** and **test** job names, and `strict_required_status_checks_policy` is `true` |
 | `no-classic-protection` | second call returns `404` | No classic protection rule on the default branch |
@@ -123,7 +168,9 @@ Fetch labels:
 gh api repos/{owner}/{repo}/labels --paginate
 ```
 
-**Required labels:** `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `ci`, `build`, `style`, `revert`, `priority`, `nice to have`, `wontfix`, `question`, `invalid`, `XS`, `S`, `M`, `L`, `XL`
+**Required labels:** `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `ci`, `build`, `style`, `revert`, `priority`, `nice to have`, `wontfix`, `question`, `invalid`, `accessibility`, `security`, `XS`, `S`, `M`, `L`, `XL`
+
+**Optional labels** (allowed, never required): `blocked` for work waiting on an external dependency or decision, and area labels in the form `area:<kebab-name>` (e.g. `area:ingest`) for repos large enough to route issues by subsystem. Labels outside this list are not findings, so Dependabot's `dependencies` and language labels pass silently.
 
 **Effort labels (t-shirt sizes):**
 
@@ -181,16 +228,32 @@ Audited: <absolute path>
 ### Justfile                     [PASS | FAIL | MISSING]
 ...
 
-### CI workflow                  [PASS | FAIL | MISSING]
-...
+### CI workflows                 [PASS | FAIL | MISSING]
+- OK   ci.yml triggers on pull_request and push to main
+- FAIL ci.yml has no concurrency group
+- FAIL lint job re-implements biome instead of running just lint
+- OK   publish.yml (Dockerfile present)
+- OK   pages.yml not required (Pages off)
 
 ### GitHub settings              [PASS | FAIL | N/A]
 - OK   No merge commits
 - FAIL No rebase merging (currently enabled)
 - OK   Commit message = PR title
+- OK   Squash commit message blank
 - OK   Suggest branch updates
 - FAIL Auto-delete head branches (disabled)
+- FAIL Auto-merge (enabled)
+- OK   Description set
+- FAIL Homepage (Pages enabled, homepage unset)
+- FAIL Wiki (enabled)
+- OK   Discussions off
 - FAIL Social preview image (not set)
+
+### Security                     [PASS | FAIL | N/A]
+- OK   dependabot-alerts
+- FAIL dependabot-security-updates (disabled)
+- OK   secret-scanning
+- OK   secret-scanning-push-protection
 
 ### Branch rules                 [PASS | FAIL | N/A]
 - OK   ruleset-active (main)
@@ -199,6 +262,7 @@ Audited: <absolute path>
 - FAIL require-pr-approval (required approvals: 0)
 - OK   require-codeowner-review
 - FAIL dismiss-stale-reviews (disabled)
+- OK   require-conversation-resolution
 - OK   codeowners-file (* @login)
 - OK   require-ci-checks (lint, test)
 - FAIL no-classic-protection (classic rule still on main)
@@ -209,7 +273,7 @@ Audited: <absolute path>
 - OK   All other required labels present
 
 ---
-Summary: X/9 areas passing
+Summary: X/10 areas passing
 Critical gaps: <one-line list of the most important missing things, or "none">
 ```
 
@@ -225,7 +289,7 @@ If the user says yes (or gives a specific list), apply fixes:
 
 **Justfile gaps** — apply the Justfile skill's fix step.
 
-**Other file-based gaps** (`.gitignore`, CI workflow) — create missing files from scratch or edit existing ones to add missing content.
+**Other file-based gaps** (`.gitignore`, workflows) — create missing files from scratch or edit existing ones to add missing content. Workflows start from the templates in [workflows.md](workflows.md).
 
 **GitHub settings** — apply with a single PATCH:
 ```sh
@@ -234,8 +298,22 @@ gh api repos/{owner}/{repo} \
   --field allow_merge_commit=false \
   --field allow_rebase_merge=false \
   --field squash_merge_commit_title=PR_TITLE \
+  --field squash_merge_commit_message=BLANK \
   --field allow_update_branch=true \
-  --field delete_branch_on_merge=true
+  --field delete_branch_on_merge=true \
+  --field allow_auto_merge=false \
+  --field has_wiki=false \
+  --field has_discussions=false
+```
+Add `--field description="..."` and, when Pages is on, `--field homepage=<pages url>` with values taken from the README.
+
+**Security** — Dependabot on every repo; secret scanning on public repos only (the PATCH fails on private repos without Advanced Security):
+```sh
+gh api repos/{owner}/{repo}/vulnerability-alerts --method PUT
+gh api repos/{owner}/{repo}/automated-security-fixes --method PUT
+gh api repos/{owner}/{repo} --method PATCH --input - <<'EOF'
+{ "security_and_analysis": { "secret_scanning": { "status": "enabled" }, "secret_scanning_push_protection": { "status": "enabled" } } }
+EOF
 ```
 
 **CODEOWNERS** — create `.github/CODEOWNERS` with a catch-all rule naming the person who approves merges (the auditing user by default; for an org repo this is still a person, not the org):
@@ -268,7 +346,7 @@ gh api repos/{owner}/{repo}/rulesets \
         "dismiss_stale_reviews_on_push": true,
         "require_code_owner_review": true,
         "require_last_push_approval": false,
-        "required_review_thread_resolution": false,
+        "required_review_thread_resolution": true,
         "allowed_merge_methods": ["squash"]
       }
     },
@@ -324,6 +402,8 @@ gh label create "nice to have" --repo {owner}/{repo} --color c5def5 --descriptio
 gh label create "wontfix"      --repo {owner}/{repo} --color ffffff --description "Won't fix"                                         --force
 gh label create "question"     --repo {owner}/{repo} --color d876e3 --description "Further information requested"                     --force
 gh label create "invalid"      --repo {owner}/{repo} --color e4e669 --description "This doesn't seem right"                          --force
+gh label create "accessibility" --repo {owner}/{repo} --color f143ab --description "Barrier affecting people with disabilities"        --force
+gh label create "security"     --repo {owner}/{repo} --color 662259 --description "Related to PII, data, host or runtime security"    --force
 
 # Effort (t-shirt size) labels
 gh label create "XS"           --repo {owner}/{repo} --color c2e0c6 --description "Effort: minor update with no code impact (e.g., docs)" --force
@@ -351,4 +431,6 @@ After fixing, re-audit only the changed areas and confirm they now pass.
 - For CI: if the workflow file has a different name, still check it. If there are multiple workflow files, audit the most likely main CI gate.
 - App-vs-library classification (used by both sibling skills): look at whether the project has a start script, server code, or deployment config — if yes, treat it as an app.
 - If a label already exists with the wrong color or description, mark it OK (name match is sufficient) — do not modify unless the user explicitly asks.
+- Secret scanning and the social preview are `N/A` on private repos, not FAIL. Dependabot is never `N/A`.
+- `has_discussions`: if the repo has discussions with real content, mark OK and note it rather than proposing to switch them off.
 - A `403` on the rules endpoints is a plan limit, not a missing setting. Do not fall back to classic protection; report `N/A` and, if the repo takes contributors, the Team-org move.

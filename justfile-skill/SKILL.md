@@ -131,9 +131,25 @@ up:
 down:
     docker compose down
 
+# Rebuild images and restart the stack
+reup:
+    docker compose up -d --build --force-recreate
+
 # Tail container logs
 logs:
     docker compose logs -f
+```
+
+**Optional recipes** — include only when the project supports them, each placed directly after the recipe it extends:
+
+```just
+# Seed local config from the example (no-op if it already exists)   ← after install
+init:
+    @test -f config.toml || cp config.example.toml config.toml
+
+# Run tests in watch mode                                             ← after test
+test-watch:
+    <test runner> --watch
 ```
 
 **Deploy recipe** (deployable apps only) — insert after Docker recipes (or after `build` if no Docker):
@@ -159,9 +175,12 @@ deploy-staging: build
 - `check` = CI gate — always `check: lint typecheck test`; drop `test` only if no tests exist
 - `typecheck` not `type-check` — no hyphens in recipe names
 - `fresh` not `reinstall` or `reset`
+- `test-watch` not `testwatch` or `watch`
+- `reup` for rebuild-and-restart — not `restart` (which implies no rebuild)
 
 ## Structure Rules
 
+- The file is named `Justfile`, capital J. `just` accepts `justfile`, but the audit tooling looks for `Justfile`
 - `default: @just --list` — ALWAYS first, ALWAYS this exact form
 - Never `default: check`, never bare `dev` as default
 - Header comment line 1: `# <project-name> — <description>`
