@@ -1,16 +1,25 @@
 ---
-name: audit
-description: "Audit a project for compliance with project standards — files AND GitHub repository settings. Use this skill whenever the user asks to audit, check, or validate a project against standards — including phrases like 'does this project comply', 'check project standards', 'what's missing', 'run the audit', or '/audit'."
+name: project-standards
+description: "Audit a project for compliance with project standards — documentation, .gitignore, Justfile, CI, and GitHub repository settings — and fix the gaps. Use this skill whenever the user asks to audit, check, or validate a project against standards — including phrases like 'does this project comply', 'check project standards', 'what's missing', 'run the audit', 'apply project standards', or '/project-standards'."
 ---
 
-# Project Standards Audit
+# Project Standards
 
-Systematically check a project against all standards and produce a structured compliance report.
+Systematically check a project against all standards and produce a structured compliance report, then offer to fix the gaps.
+
+Two areas are owned by sibling skills and this skill defers to them rather than restating their rules:
+
+| Area | Owning skill | Read before auditing |
+|------|--------------|----------------------|
+| Documentation (`README.md`, `docs/PURPOSE.md`, `CONTEXT.md`, `CLAUDE.md`, `LICENSE`, `docs/` detail directories and summary docs, monorepo package docs) | `/project-docs` | `~/.claude/skills/project-docs/SKILL.md` |
+| `Justfile` (required recipes, naming, structure, monorepo modules) | `/justfile` | `~/.claude/skills/justfile/SKILL.md` |
+
+If a rule here ever disagrees with the owning skill, the owning skill wins.
 
 ## Invocation
 
-- `/audit` — audit the current working directory
-- `/audit <path>` — audit the project at the given path
+- `/project-standards` — audit the current working directory
+- `/project-standards <path>` — audit the project at the given path
 
 ## Audit Process
 
@@ -26,21 +35,15 @@ Parse `owner/repo` from the URL. If no remote exists, skip all GitHub settings c
 
 ### Step 2 — Check each area
 
-#### README.md
+#### Documentation
 
-- File exists
-- Has project name and one-sentence description
-- Lists prerequisites (runtime versions, required environment variables)
-- Has a quickstart command (`just dev` or equivalent)
-- Links to `docs/PURPOSE.md`
-- States a license
+Read the project-docs skill, then run its audit process against this project. That skill decides whether the repo is a single project or a monorepo and which documents are required where.
 
-#### docs/PURPOSE.md
+Carry its findings into this report as three sections:
 
-- File exists
-- Has a "problem being solved" section (1–3 paragraphs)
-- Explicitly lists non-goals
-- States the intended audience or users
+- **README.md** — the root README checks
+- **docs/PURPOSE.md** — the purpose doc checks
+- **Other docs** — `CONTEXT.md`, `CLAUDE.md`, `LICENSE`, detail directories (`docs/requirements/`, `features/`, `use-cases/`, `research/`, `decisions/`, `design/`, `runbooks/`) and their summary docs, optional-doc triggers, "never" violations, and (monorepo) one line per package README
 
 #### .gitignore
 
@@ -53,20 +56,7 @@ Parse `owner/repo` from the URL. If no remote exists, skip all GitHub settings c
 
 #### Justfile
 
-- File exists
-- Has a header comment `# <project-name> — <one-line description>`
-- `default` recipe is first and uses exactly `@just --list`
-- Has all required recipes: `install`, `check`, `lint`, `fix`, `typecheck`, `test`, `clean`, `fresh`
-- For runnable apps (not libraries): also has `run` and `dev`
-- For containerized apps: also has `up`, `down`, `reup` (up --build)
-- For deployable apps: also has `deploy` (and `deploy-staging` if staging exists)
-- `check` depends on `lint typecheck test` (may omit `test` only if no tests exist)
-- `lint` is read-only; `fix` is write-mode — not a single combined recipe
-- No hyphens in recipe names (`typecheck` not `type-check`)
-- `fresh` (not `reinstall` or `reset`) depends on `clean install`
-- Each recipe has a comment on the line immediately above it (no blank line between comment and recipe)
-- One blank line between recipes
-- No `set` declarations or variables unless clearly needed
+Read the Justfile skill, then run its audit process against this project's Justfile (root Justfile plus per-package modules in a monorepo). Each `MISSING`, `RENAME`, or structural finding from that audit becomes a `FAIL` line here; `OK` lines carry over as `OK`. Do not apply the Justfile skill's fixes during the audit — fixes happen in Step 4.
 
 #### .github/workflows/ci.yml
 
@@ -157,6 +147,7 @@ Use this exact format:
 Audited: <absolute path>
 
 ### README.md                    [PASS | FAIL | MISSING]
+- FAIL No status badge under the H1
 - OK   Has project name and description
 - FAIL Missing prerequisites section
 - OK   Quickstart command present (just dev)
@@ -165,6 +156,13 @@ Audited: <absolute path>
 
 ### docs/PURPOSE.md              [PASS | FAIL | MISSING]
 ...
+
+### Other docs                   [PASS | FAIL | MISSING]
+- OK   CONTEXT.md present with open-questions section
+- FAIL CLAUDE.md contains project narrative (belongs in CONTEXT.md)
+- OK   LICENSE present
+- FAIL docs/decisions.md missing entry for 0003-adopt-pnpm.md
+- FAIL apps/web/README.md missing        (monorepo only)
 
 ### .gitignore                   [PASS | FAIL | MISSING]
 ...
@@ -194,7 +192,7 @@ Audited: <absolute path>
 - OK   All other required labels present
 
 ---
-Summary: X/8 areas passing
+Summary: X/9 areas passing
 Critical gaps: <one-line list of the most important missing things, or "none">
 ```
 
@@ -206,7 +204,11 @@ After the report, ask: "Would you like me to fix any of these issues?"
 
 If the user says yes (or gives a specific list), apply fixes:
 
-**File-based gaps** — create missing files from scratch or edit existing ones to add missing content. If something requires human input (e.g., the actual purpose statement), scaffold a template with `<!-- TODO: fill in -->`.
+**Documentation gaps** — apply the project-docs skill's fix step (its templates, its `<!-- TODO: fill in -->` convention).
+
+**Justfile gaps** — apply the Justfile skill's fix step.
+
+**Other file-based gaps** (`.gitignore`, CI workflow) — create missing files from scratch or edit existing ones to add missing content.
 
 **GitHub settings** — apply with a single PATCH:
 ```sh
@@ -290,5 +292,5 @@ After fixing, re-audit only the changed areas and confirm they now pass.
 - If a README has a prerequisites section but it's vague (e.g., "Node.js" with no version), mark it FAIL with a note.
 - For .gitignore, look at what languages/tools the project actually uses and only flag entries relevant to the project.
 - For CI: if the workflow file has a different name, still check it. If there are multiple workflow files, audit the most likely main CI gate.
-- For Justfile app-type classification: look at whether the project has a start script, server code, or deployment config — if yes, treat it as an app.
+- App-vs-library classification (used by both sibling skills): look at whether the project has a start script, server code, or deployment config — if yes, treat it as an app.
 - If a label already exists with the wrong color or description, mark it OK (name match is sufficient) — do not modify unless the user explicitly asks.
