@@ -118,6 +118,7 @@ Rename legacy labels first. A rename rewrites the label on every issue and PR ca
 gh api repos/{owner}/{repo}/labels/feature       --method PATCH --field name=feat          --field description="New feature (Conventional Commits: feat)" 2>/dev/null
 gh api repos/{owner}/{repo}/labels/bug           --method PATCH --field name=fix           --field description="Bug fix (Conventional Commits: fix)" 2>/dev/null
 gh api repos/{owner}/{repo}/labels/documentation --method PATCH --field name=docs          --field description="Documentation (Conventional Commits: docs)" 2>/dev/null
+gh api repos/{owner}/{repo}/labels/spike         --method PATCH --field name=research      --field description="Investigation: findings and a recommendation, not code" 2>/dev/null
 
 # Create missing required labels
 gh label create "feat"         --repo {owner}/{repo} --color 0075ca --description "New feature (Conventional Commits: feat)"         --force
@@ -138,6 +139,7 @@ gh label create "question"     --repo {owner}/{repo} --color d876e3 --descriptio
 gh label create "invalid"      --repo {owner}/{repo} --color e4e669 --description "This doesn't seem right"                          --force
 gh label create "accessibility" --repo {owner}/{repo} --color f143ab --description "Barrier affecting people with disabilities"        --force
 gh label create "security"     --repo {owner}/{repo} --color 662259 --description "Related to PII, data, host or runtime security"    --force
+gh label create "research"     --repo {owner}/{repo} --color 5319e7 --description "Investigation: findings and a recommendation, not code" --force
 
 # Effort (t-shirt size) labels
 gh label create "XS"           --repo {owner}/{repo} --color c2e0c6 --description "Effort: minor update with no code impact (e.g., docs)" --force
