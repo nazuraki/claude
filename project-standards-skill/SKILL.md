@@ -170,7 +170,7 @@ Fetch labels:
 gh api repos/{owner}/{repo}/labels --paginate
 ```
 
-**Required labels:** `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `ci`, `build`, `style`, `revert`, `priority`, `nice to have`, `wontfix`, `question`, `invalid`, `accessibility`, `security`, `XS`, `S`, `M`, `L`, `XL`
+**Required labels:** `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `ci`, `build`, `style`, `revert`, `priority`, `nice to have`, `wontfix`, `question`, `invalid`, `accessibility`, `security`, `research`, `XS`, `S`, `M`, `L`, `XL`
 
 **Optional labels** (allowed, never required): `blocked` for work waiting on an external dependency or decision, and area labels in the form `area:<kebab-name>` (e.g. `area:ingest`) for repos large enough to route issues by subsystem. Labels outside this list are not findings, so Dependabot's `dependencies` and language labels pass silently.
 
@@ -193,6 +193,7 @@ gh api repos/{owner}/{repo}/labels --paginate
 | `feature` | `feat` |
 | `bug` | `fix` |
 | `documentation` | `docs` |
+| `spike` | `research` |
 
 Check:
 - All required labels present (legacy names count as satisfying the requirement but are flagged for rename)
