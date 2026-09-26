@@ -27,7 +27,9 @@ Two companion files sit beside this skill: [workflows.md](workflows.md) holds th
 
 ### Step 1 — Resolve the target
 
-If a path was given, use it. Otherwise use the current working directory. State the project being audited at the top of your report.
+If a path was given, use it. Otherwise use the current working directory. State the project being audited at the top of your report, with its type.
+
+Read the repo type from the root README type badge (`library`, `service`, `web app`, or `native app`; defined in the project-docs skill). The type is a property of the repo as a whole, never of a package inside it, and it is the source of truth for what the repo releases: it decides which release shape applies and whether a Dockerfile and `publish.yml` are expected. When the badge is missing or names more than one type, infer the type from what the repo releases for the rest of the audit (a compiled binary target is a native app; server code whose main interface is an API is a service; a server or static build whose main interface is pages is a web app; published packages and no runnable deliverable is a library) and mark the report header `inferred`. The README check itself fails through the documentation area.
 
 Detect the GitHub repo identity by running:
 ```sh
@@ -80,7 +82,7 @@ The main gate is `.github/workflows/ci.yml`:
 - Node version comes from `node-version-file: .nvmrc` (the file is committed), never an inline `node-version`
 - All action versions are pinned to a major tag or SHA, never `@latest` or `@main`
 - `actions/checkout` is v6 or newer
-- Matrix jobs are named after what varies, in terms a developer recognizes: the package in a monorepo (`test (core)`, `test (bot)`), the platform for a desktop app (`build (macos)`). Never a bare runtime version: `test (22)` says nothing. A Node-version matrix is only for a published library that supports more than one major, and then the name carries both: `test (core, node 22)`
+- Matrix jobs are named after what varies, in terms a developer recognizes: the package in a monorepo (`test (core)`, `test (bot)`), the platform for a native app (`build (macos)`). Never a bare runtime version: `test (22)` says nothing. A Node-version matrix is only for a published library that supports more than one major, and then the name carries both: `test (core, node 22)`
 - In a monorepo the matrix job is `test-package` and a gate job `test` depends on it, so the ruleset requires `test` and never has to list packages (see the monorepo variant in workflows.md)
 
 Secondary workflows are specified in [workflows.md](workflows.md). Check each one whose trigger applies:
@@ -90,7 +92,17 @@ Secondary workflows are specified in [workflows.md](workflows.md). Check each on
 | `publish.yml` | Repo has a Dockerfile and deploys as a container | Exists under that name; runs on `push` to `main` and `v*` tags; pushes to GHCR with `latest`, `sha-*`, and semver tags; `permissions: packages: write`; concurrency per ref |
 | `pages.yml` | GitHub Pages is enabled (`gh api repos/{owner}/{repo}/pages` returns `200`) | Exists under that name; `build_type` is `workflow`; deploys with `actions/deploy-pages` from the `github-pages` environment; repo `homepage` is the Pages URL |
 | `pr-guidelines.yml` | Every repo | Exists under that name; triggers on `pull_request` types `opened, edited, synchronize, reopened`; job `pr-title` runs `amannn/action-semantic-pull-request` with the Conventional Commits types; `pr-title` is a required status check (squash titles come from PR titles, so this is what keeps `main` history conventional) |
-| `release.yml` | The project publishes versioned releases | Matches the release shape for its kind: library, desktop app, or service (services need no `release.yml`; `publish.yml` is their release pipeline) |
+| `release.yml` | The project publishes versioned releases | Matches the release shape for the repo type on the README badge: library, native app, service, or web app (services and web apps need no `release.yml`; `publish.yml` or `pages.yml` is their release pipeline) |
+
+The repo type also caps what the repo publishes, and the workflows must agree with it:
+
+- A `library` repo publishes packages, one or several, and never a container image or installer
+- A `service` repo publishes exactly one container image; a `publish.yml` that builds several images is a FAIL, with the note that each extra image is a separate service and belongs in its own repo
+- A `web app` repo deploys one UI, as one image or one Pages site
+- A `native app` repo builds one application's installers, across platforms
+- Workflows that publish two kinds of deliverable (an image and a package, two images, a package and an installer) are a FAIL regardless of the badge, and the split belongs under Critical gaps
+
+Packages inside a monorepo do not change this: a service split into workspace packages still ships one image, and a library monorepo ships packages only.
 
 #### GitHub repository settings
 
@@ -206,9 +218,11 @@ Use this exact format:
 ```
 ## Project Standards Audit: <project-name>
 Audited: <absolute path>
+Type: <library | service | web app | native app> (<from README badge | inferred>)
 
 ### README.md                    [PASS | FAIL | MISSING]
 - FAIL No status badge under the H1
+- FAIL No repo type badge after the status badge
 - OK   Has project name and description
 - FAIL Missing prerequisites section
 - OK   Quickstart command present (just dev)
@@ -296,7 +310,7 @@ After fixing, re-audit only the changed areas and confirm they now pass.
 - If a README has a prerequisites section but it's vague (e.g., "Node.js" with no version), mark it FAIL with a note.
 - For .gitignore, look at what languages/tools the project actually uses and only flag entries relevant to the project.
 - For CI: if the workflow file has a different name, still check it. If there are multiple workflow files, audit the most likely main CI gate.
-- App-vs-library classification (used by both sibling skills): look at whether the project has a start script, server code, or deployment config — if yes, treat it as an app.
+- Repo type: trust the README type badge over your own reading of the code. A service with an admin UI is still a service, a web app with a supporting API is still a web app, and a service organized into workspace packages is still one service. If the badge plainly contradicts what the repo releases (a `library` badge on a repo with a Dockerfile and a deploy recipe), keep auditing against the badge and call out the contradiction under Critical gaps rather than silently reclassifying.
 - If a label already exists with the wrong color or description, mark it OK (name match is sufficient) — do not modify unless the user explicitly asks.
 - Secret scanning and the social preview are `N/A` on private repos, not FAIL. Dependabot is never `N/A`.
 - `has_discussions`: if the repo has discussions with real content, mark OK and note it rather than proposing to switch them off.

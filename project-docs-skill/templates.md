@@ -7,7 +7,7 @@ Templates used by the project-docs skill's `new` and fix steps. Keep `<!-- TODO:
 ```markdown
 # <project-name>
 
-![Status: <stage>](https://img.shields.io/badge/status-<stage>-<color>)  <!-- exact markdown per stage: see SKILL.md -->
+![Status: <stage>](https://img.shields.io/badge/status-<stage>-<color>) ![Type: <type>](https://img.shields.io/badge/type-<type>-blueviolet)  <!-- exact markdown per stage and type: see SKILL.md -->
 
 <one-sentence description>
 
