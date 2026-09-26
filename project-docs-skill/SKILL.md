@@ -28,7 +28,7 @@ The documents every project carries, what each one is for, and where it lives. L
 
 | Document | Purpose | Contents |
 |----------|---------|----------|
-| `README.md` | Front door for a new reader | Status badge on the first line after the H1 (see below); project name and one-sentence description; prerequisites (runtime versions, required env vars); quickstart command (`just install` then `just dev` or equivalent); link to `docs/PURPOSE.md`; license line |
+| `README.md` | Front door for a new reader | Status badge and repo type badge on the first line after the H1 (see below); project name and one-sentence description; prerequisites (runtime versions, required env vars); quickstart command (`just install` then `just dev` or equivalent); link to `docs/PURPOSE.md`; license line |
 | `docs/PURPOSE.md` | Why the project exists | Problem being solved (1–3 paragraphs); explicit non-goals; intended audience or users |
 | `CONTEXT.md` | Working context for humans and agents | Architectural decisions not visible in code; business rules and thresholds (canonical definition, even if also in code); deployment topology; env var semantics; external contracts not yet implemented; open questions and deferred decisions |
 | `CLAUDE.md` | Agent instructions only | Commands, conventions, guardrails. No project narrative — that belongs in `CONTEXT.md`, which `CLAUDE.md` may reference |
@@ -46,7 +46,20 @@ The documents every project carries, what each one is for, and where it lives. L
 | beta | Feature complete for the intended audience; stabilizing | `![Status: beta](https://img.shields.io/badge/status-beta-blue)` |
 | production | Released and supported | `![Status: production](https://img.shields.io/badge/status-production-brightgreen)` |
 
-For a project no longer maintained, keep the stage badge and add `![Archived](https://img.shields.io/badge/archived-inactive)` on the same line. Other badges (CI, license, version) may follow on the same line, but the status badge comes first. Update the badge in the same change that moves the project between stages. In a monorepo, only the root README carries the badge; a package README may carry its own only when the package is independently published.
+For a project no longer maintained, keep the stage badge and add `![Archived](https://img.shields.io/badge/archived-inactive)` on the same line. The repo type badge (next) follows the status badge; other badges (CI, license, version) may come after those two. Update the badge in the same change that moves the project between stages. In a monorepo, only the root README carries the status badge; a package README may carry its own only when the package is independently published.
+
+**Repo type badge.** Every repo is exactly one of four types, and the root README says which with a second static badge on the same line as the status badge, immediately after it. The type names what the repo releases, so a repo has one release pipeline and never publishes two kinds of thing. Use the exact markdown from this table:
+
+| Type | Meaning | Markdown |
+|------|---------|----------|
+| library | Exists only to publish packages for other code to depend on; ships no runnable deliverable of its own | `![Type: library](https://img.shields.io/badge/type-library-blueviolet)` |
+| service | The primary interface is an API; it may carry a web UI for administration | `![Type: service](https://img.shields.io/badge/type-service-blueviolet)` |
+| web app | The primary interface is a web UI | `![Type: web app](https://img.shields.io/badge/type-web_app-blueviolet)` |
+| native app | The primary distribution is a compiled binary: desktop, mobile, or CLI | `![Type: native app](https://img.shields.io/badge/type-native_app-blueviolet)` |
+
+A repo is never more than one type. Classify by primary interface and distribution, not by everything the code contains: a service with an admin console is a service, a web app whose API exists only to serve its own UI is a web app, a library that ships a helper CLI is a library, and a CLI that is the product is a native app. The badge is the canonical statement of the repo's type. The project-standards skill reads it to pick the CI release shape rather than inferring the type from the code, so a wrong or missing badge misdirects the downstream checks.
+
+The type belongs to the repo, not to its packages, so in a monorepo only the root README carries the type badge and package READMEs never do. A library monorepo may publish several packages, and all of them are libraries. A service, web app, or native app repo may split into packages for its own organization, but those packages are internal: they are never published on their own. A repo that would need two types, such as a service plus a library meant for publishing, or two services, is two repos.
 
 `README.md` is for someone who has never seen the project. `CONTEXT.md` is for someone about to change it. `docs/PURPOSE.md` is for someone deciding whether it should exist. Keep those audiences separate; do not merge the files.
 
@@ -229,6 +242,7 @@ Ask: "If this package were deleted, would this document still be true?" If yes, 
 ### Root
 OK       README.md
 FAIL     README.md — no status badge under the H1 (or stage not one of the six)
+FAIL     README.md — no repo type badge after the status badge (or type not one of the four, or more than one)
 FAIL     README.md — no prerequisites section
 MISSING  docs/PURPOSE.md
 FAIL     CONTEXT.md — contains a file tree (derivable; remove)
@@ -246,7 +260,7 @@ FAIL     docs/design/ — no docs/design.md summary
 Summary: X/Y documents passing
 ```
 
-8. Ask: "Would you like me to fix any of these?" On yes, create missing files from the templates below and edit existing ones. Where content needs human input, write `<!-- TODO: fill in -->`. When generating a missing summary doc, derive each entry's title and one-line summary from the detail file's H1 and first paragraph.
+8. Ask: "Would you like me to fix any of these?" On yes, create missing files from the templates below and edit existing ones. Where content needs human input, write `<!-- TODO: fill in -->`. When generating a missing summary doc, derive each entry's title and one-line summary from the detail file's H1 and first paragraph. When the repo type badge is missing, infer the type from what the repo releases (a compiled binary target is a native app; server code whose main interface is an API is a service; a server or static build whose main interface is pages is a web app; published packages and no runnable deliverable is a library), state the inference, and confirm it with the user before writing the badge. The types are exclusive, so never write two; if the repo releases two kinds of thing, say so and leave the badge to the user.
 
 ## Templates
 

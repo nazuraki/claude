@@ -82,7 +82,7 @@ Swap the setup steps for the project's runtime (`actions/setup-python`, `dtolnay
       - run: test "${{ needs.test-package.result }}" = success
 ```
 
-Checks show as `test (core)`, `test (bot)`, and `test`; the ruleset requires `lint`, `test`, and `pr-title` only, so adding a package never touches the ruleset. Name matrix entries after what varies. A runtime version on its own is not a name: use a version matrix only for a published library that supports more than one major, and then name it `test (core, node 22)`. Desktop apps matrix over platform: `build (macos)`, `build (windows)`.
+Checks show as `test (core)`, `test (bot)`, and `test`; the ruleset requires `lint`, `test`, and `pr-title` only, so adding a package never touches the ruleset. Name matrix entries after what varies. A runtime version on its own is not a name: use a version matrix only for a published library that supports more than one major, and then name it `test (core, node 22)`. Native apps matrix over platform: `build (macos)`, `build (windows)`.
 
 ## `pr-guidelines.yml` — PR title lint
 
@@ -175,7 +175,7 @@ jobs:
           cache-to: type=gha,mode=max
 ```
 
-**Monorepo variant.** Keep the name `publish.yml`. Add a `changes` job that diffs the push range against each image's input paths and emits a `matrix.include` of `{image, context, dockerfile}` entries; the `publish` job runs `strategy.matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}` with `cache-from`/`cache-to` scoped per image. Tag pushes and unknown base commits publish every image.
+**Monorepo.** A service repo publishes one image even when it is organized into workspace packages: the Dockerfile builds the service from the workspace root, and `publish.yml` stays as above. A repo that seems to need a second image has a second service in it, and that service belongs in its own repo (see Release shapes).
 
 ## `pages.yml` — GitHub Pages
 
@@ -225,20 +225,24 @@ Add a `paths:` filter to the push trigger when only part of the repo feeds the s
 
 ## Release shapes
 
-Which shape applies depends on what the project ships. A repo has at most one.
+Which shape applies is decided by the repo type on the README badge (see the project-docs skill). A repo has exactly one type, at most one release shape, and releases deliverables of that type only: a library monorepo publishes several packages, a service repo publishes one image. A repo that needs a second service, or a service plus a published library, is split into two repos.
 
 ### Library — published package
 
-`release.yml` runs on every push to `main`. It computes the next version from the Conventional Commit titles since the last tag, writes the bump commit `chore(release): vX.Y.Z`, tags, and creates the GitHub release. A separate `publish.yml` on `v*` tags publishes the package with provenance.
+`release.yml` runs on every push to `main`. It computes the next version from the Conventional Commit titles since the last tag, writes the bump commit `chore(release): vX.Y.Z`, tags, and creates the GitHub release. A separate `publish.yml` on `v*` tags publishes the package with provenance. In a library monorepo the same tag publishes every publishable package at that version.
 
 - `permissions: contents: write`; `concurrency: { group: release, cancel-in-progress: false }`
 - The bump commit is pushed with an admin token stored as `RELEASE_TOKEN`, which uses the ruleset's admin bypass. Guard the job with `if: github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'chore(release):')` so the bump does not release itself.
 - `publish.yml` for a package: trigger `push.tags: ["v*"]`, `permissions: { contents: read, id-token: write }`, `npm publish --provenance --access public` via OIDC trusted publishing. No registry token in secrets.
 
-### Desktop app — installable binaries
+### Native app — installable binaries
 
 `release.yml` runs on `workflow_dispatch` with a boolean `major` input. A `prepare` job computes the version and changelog (`orhun/git-cliff-action@v4`) and pushes the tag. A `build` job calls a reusable `build.yml` (`on: workflow_call` with a `tag` input) that runs a platform matrix (`macos-latest`, `windows-latest`, add `ubuntu-latest` when shipped) and uploads the installers to the GitHub release with `softprops/action-gh-release@v2`.
 
 ### Service — container deployed to a host
 
-No `release.yml`. `publish.yml` above is the release pipeline: every merge to `main` ships `latest`, and a hand-cut `vX.Y.Z` tag marks a release and publishes semver tags. The host pulls the image; `just deploy` triggers that pull (for example by calling the deployment backplane's deploy endpoint). A GitHub release object per tag is optional. Examples: the edge proxy, the deployment backplane, dashboards.
+No `release.yml`. `publish.yml` above is the release pipeline: every merge to `main` ships `latest`, and a hand-cut `vX.Y.Z` tag marks a release and publishes semver tags. The host pulls the image; `just deploy` triggers that pull (for example by calling the deployment backplane's deploy endpoint). A GitHub release object per tag is optional. Examples: the edge proxy, the deployment backplane.
+
+### Web app — hosted UI
+
+No `release.yml`. A web app that ships as a container follows the service shape above: `publish.yml` is the release pipeline and the host pulls the image. A static web app deploys through `pages.yml`, and every merge to `main` is the release. Examples: dashboards, documentation sites.
