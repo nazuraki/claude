@@ -33,7 +33,6 @@ gh api repos/{owner}/{repo} \
   --field squash_merge_commit_message=BLANK \
   --field allow_update_branch=true \
   --field delete_branch_on_merge=true \
-  --field allow_auto_merge=false \
   --field has_wiki=false \
   --field has_discussions=false
 ```

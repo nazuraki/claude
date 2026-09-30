@@ -139,7 +139,6 @@ Check:
 | REST | `squash_merge_commit_message` | `"BLANK"` |
 | REST | `allow_update_branch` | `true` |
 | REST | `delete_branch_on_merge` | `true` |
-| REST | `allow_auto_merge` | `false` |
 | REST | `description` | Non-empty |
 | REST | `homepage` | The Pages URL when Pages is enabled; otherwise anything |
 | REST | `has_wiki` | `false` — docs live in the repo |
@@ -281,7 +280,6 @@ Type: <library | service | web app | native app> (<from README badge | inferred>
 - OK   Squash commit message blank
 - OK   Suggest branch updates
 - FAIL Auto-delete head branches (disabled)
-- FAIL Auto-merge (enabled)
 - OK   Description set
 - FAIL Homepage (Pages enabled, homepage unset)
 - FAIL Wiki (enabled)
