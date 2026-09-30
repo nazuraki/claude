@@ -11,10 +11,16 @@ Two areas are owned by sibling skills and this skill defers to them rather than 
 
 | Area | Owning skill | Read before auditing |
 |------|--------------|----------------------|
-| Documentation (`README.md`, `docs/PURPOSE.md`, `CONTEXT.md`, `CLAUDE.md`, `LICENSE`, `docs/` detail directories and summary docs, monorepo package docs) | `/project-docs` | `~/.claude/skills/project-docs/SKILL.md` |
+| Documentation, per the Project Documentation and Project Details specs (`README.md` and its details line, `LICENSE`, `docs/PURPOSE.md`, `docs/requirements/`, other `docs/` detail directories and summary docs, monorepo package docs) | `/project-docs` | `~/.claude/skills/project-docs/SKILL.md` |
 | `Justfile` (required recipes, naming, structure, monorepo modules) | `/justfile` | `~/.claude/skills/justfile/SKILL.md` |
 
 If a rule here ever disagrees with the owning skill, the owning skill wins.
+
+The GitHub areas (CI workflows, GitHub settings, Security, Branch rules, Labels) apply the **Project Operations 1.0.0** spec, which builds on Project Details. Before auditing them, read its raw Markdown:
+
+    curl -fsSL https://lepid-labs.github.io/spec/project-operations/v1.0.0/index.md
+
+Use `curl` (or a local copy of `site/spec/project-operations/v1.0.0/index.md` in the lepid-labs.github.io checkout), not a summarizing fetch. Cite findings as `Ops §5.3` (section 5, rule 3). If a check below disagrees with the spec, the spec wins; if `https://lepid-labs.github.io/spec/` lists a newer version, tell the user and ask whether to audit against it. The `.gitignore`, Justfile, and agent-instruction areas are this skill's own standards, outside the spec.
 
 Two companion files sit beside this skill: [workflows.md](workflows.md) holds the workflow templates the CI area checks against, and [fixes.md](fixes.md) holds the commands Step 4 runs. Read each when you reach the step that needs it.
 
@@ -29,7 +35,7 @@ Two companion files sit beside this skill: [workflows.md](workflows.md) holds th
 
 If a path was given, use it. Otherwise use the current working directory. State the project being audited at the top of your report, with its type.
 
-Read the repo type from the root README type badge (`library`, `service`, `web app`, or `native app`; defined in the project-docs skill). The type is a property of the repo as a whole, never of a package inside it, and it is the source of truth for what the repo releases: it decides which release shape applies and whether a Dockerfile and `publish.yml` are expected. When the badge is missing or names more than one type, infer the type from what the repo releases for the rest of the audit (a compiled binary target is a native app; server code whose main interface is an API is a service; a server or static build whose main interface is pages is a web app; published packages and no runnable deliverable is a library) and mark the report header `inferred`. The README check itself fails through the documentation area.
+Read the repo type from the root README type badge (`library`, `service`, `web app`, or `native app`; defined in §3 of the Project Details spec, which the project-docs skill loads). The type is a property of the repo as a whole, never of a package inside it, and it is the source of truth for what the repo releases: it decides which release shape applies and whether a Dockerfile and `publish.yml` are expected. When the badge is missing or names more than one type, infer the type from what the repo releases for the rest of the audit (a compiled binary target is a native app; server code whose main interface is an API is a service; a server or static build whose main interface is pages is a web app; published packages and no runnable deliverable is a library) and mark the report header `inferred`. The README check itself fails through the documentation area.
 
 Detect the GitHub repo identity by running:
 ```sh
@@ -47,7 +53,18 @@ Carry its findings into this report as three sections:
 
 - **README.md** — the root README checks
 - **docs/PURPOSE.md** — the purpose doc checks
-- **Other docs** — `CONTEXT.md`, `CLAUDE.md`, `LICENSE`, detail directories (`docs/requirements/`, `features/`, `use-cases/`, `research/`, `decisions/`, `design/`, `runbooks/`) and their summary docs, optional-doc triggers, "never" violations, and (monorepo) one line per package README
+- **Other docs** — `LICENSE`, `docs/requirements/`, the other detail directories (`features/`, `use-cases/`, `research/`, `decisions/`, `design/`, `runbooks/`, `guides/`) and their summary docs, `docs/open-questions.md`, a catch-all `CONTEXT.md` (flagged, spec §1.8), optional-doc triggers, prohibited items, and (monorepo) one line per package README
+
+#### Agent instructions
+
+Agent instruction files are a repository standard, not documentation, so this skill owns them.
+
+- `CLAUDE.md` exists at the root
+- It holds agent instructions only: commands, conventions, guardrails. No project narrative
+- It links to the project's documents (`docs/requirements.md`, `docs/decisions.md`, runbooks) rather than restating them; restated rules or decisions are a FAIL
+- It does not point at a `CONTEXT.md`
+- In a monorepo, a package `CLAUDE.md` adds to the root one and never repeats it
+- The same checks apply to `AGENTS.md` if present
 
 #### .gitignore
 
@@ -92,15 +109,15 @@ Secondary workflows are specified in [workflows.md](workflows.md). Check each on
 | `publish.yml` | Repo has a Dockerfile and deploys as a container | Exists under that name; runs on `push` to `main` and `v*` tags; pushes to GHCR with `latest`, `sha-*`, and semver tags; `permissions: packages: write`; concurrency per ref |
 | `pages.yml` | GitHub Pages is enabled (`gh api repos/{owner}/{repo}/pages` returns `200`) | Exists under that name; `build_type` is `workflow`; deploys with `actions/deploy-pages` from the `github-pages` environment; repo `homepage` is the Pages URL |
 | `pr-guidelines.yml` | Every repo | Exists under that name; triggers on `pull_request` types `opened, edited, synchronize, reopened`; job `pr-title` runs `amannn/action-semantic-pull-request` with the Conventional Commits types; `pr-title` is a required status check (squash titles come from PR titles, so this is what keeps `main` history conventional) |
-| `release.yml` | The project publishes versioned releases | Matches the release shape for the repo type on the README badge: library, native app, service, or web app (services and web apps need no `release.yml`; `publish.yml` or `pages.yml` is their release pipeline) |
+| `release.yml` | The project publishes versioned releases | Matches the release shape for the repo type on the README badge: library, native app, service, or web app (services and web apps need no `release.yml`; `publish.yml` or `pages.yml` is their release pipeline). When the README version badge is static (private release source, Details §5.4), the release commit rewrites it; a native app's `release.yml` then commits `chore(release): v<version>` before tagging (Ops §7.4, §7.7) |
 
 The repo type also caps what the repo publishes, and the workflows must agree with it:
 
 - A `library` repo publishes packages, one or several, and never a container image or installer
-- A `service` repo publishes exactly one container image; a `publish.yml` that builds several images is a FAIL, with the note that each extra image is a separate service and belongs in its own repo
+- A `service` repo publishes exactly one container image (one image name; a multi-platform image such as `linux/amd64` + `linux/arm64` is still one image, Ops §7.5). A `publish.yml` that pushes several image names, or per-platform names or tags instead of one multi-platform image, is a FAIL, with the note that each extra image is a separate service and belongs in its own repo
 - A `web app` repo deploys one UI, as one image or one Pages site
 - A `native app` repo builds one application's installers, across platforms
-- Workflows that publish two kinds of deliverable (an image and a package, two images, a package and an installer) are a FAIL regardless of the badge, and the split belongs under Critical gaps
+- Workflows that publish two kinds of deliverable (an image and a package, two image names, a package and an installer) are a FAIL regardless of the badge, and the split belongs under Critical gaps
 
 Packages inside a monorepo do not change this: a service split into workspace packages still ships one image, and a library monorepo ships packages only.
 
@@ -122,7 +139,6 @@ Check:
 | REST | `squash_merge_commit_message` | `"BLANK"` |
 | REST | `allow_update_branch` | `true` |
 | REST | `delete_branch_on_merge` | `true` |
-| REST | `allow_auto_merge` | `false` |
 | REST | `description` | Non-empty |
 | REST | `homepage` | The Pages URL when Pages is enabled; otherwise anything |
 | REST | `has_wiki` | `false` — docs live in the repo |
@@ -221,8 +237,8 @@ Audited: <absolute path>
 Type: <library | service | web app | native app> (<from README badge | inferred>)
 
 ### README.md                    [PASS | FAIL | MISSING]
-- FAIL No status badge under the H1
-- FAIL No repo type badge after the status badge
+- FAIL Details line: no type badge before the status badge (Details §2.1)
+- FAIL Details line: CI badge on it; belongs after the description (Details §2.3)
 - OK   Has project name and description
 - FAIL Missing prerequisites section
 - OK   Quickstart command present (just dev)
@@ -233,11 +249,15 @@ Type: <library | service | web app | native app> (<from README badge | inferred>
 ...
 
 ### Other docs                   [PASS | FAIL | MISSING]
-- OK   CONTEXT.md present with open-questions section
-- FAIL CLAUDE.md contains project narrative (belongs in CONTEXT.md)
-- OK   LICENSE present
+- OK   LICENSE present (all rights reserved, owner named)
+- MISSING docs/requirements/ (spec §5.1)
+- FAIL CONTEXT.md is a catch-all context file (spec §1.8); split it with /project-docs
 - FAIL docs/decisions.md missing entry for 0003-adopt-pnpm.md
 - FAIL apps/web/README.md missing        (monorepo only)
+
+### Agent instructions           [PASS | FAIL | MISSING]
+- OK   CLAUDE.md present
+- FAIL CLAUDE.md restates the build rules instead of linking docs/requirements.md
 
 ### .gitignore                   [PASS | FAIL | MISSING]
 ...
@@ -260,7 +280,6 @@ Type: <library | service | web app | native app> (<from README badge | inferred>
 - OK   Squash commit message blank
 - OK   Suggest branch updates
 - FAIL Auto-delete head branches (disabled)
-- FAIL Auto-merge (enabled)
 - OK   Description set
 - FAIL Homepage (Pages enabled, homepage unset)
 - FAIL Wiki (enabled)
