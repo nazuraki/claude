@@ -1,16 +1,20 @@
 # Project Docs Templates
 
 Templates used by the project-docs skill's `new` and fix steps. Section references (`§2`) are to the Project
-Documentation 1.0.0 spec. Keep `<!-- TODO: fill in -->` markers where content needs human input.
+Documentation 1.1.0 spec, and `Details §n` to Project Details 1.0.0. Keep `<!-- TODO: fill in -->` markers where
+content needs human input.
 
-`README.md` (§2, §6):
+`README.md` (§2, Details §1–§5). Keep the version badge only if the project publishes versioned releases, using the
+source from Details §5:
 
 ```markdown
 # <project-name>
 
-![Status: <stage>](https://img.shields.io/badge/status-<stage>-<color>) ![Type: <type>](https://img.shields.io/badge/type-<type>-blueviolet)
+![Type: <type>](https://img.shields.io/badge/type-<type>-blueviolet) ![Status: <stage>](https://img.shields.io/badge/status-<stage>-<color>) ![Version](https://img.shields.io/github/v/release/<owner>/<repo>?label=version)
 
-<one-sentence description>
+<one- or two-sentence description>
+
+<other badges, if any: CI, license, conformance>
 
 See [docs/PURPOSE.md](docs/PURPOSE.md) for why this project exists.
 

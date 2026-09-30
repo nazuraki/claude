@@ -225,7 +225,7 @@ Add a `paths:` filter to the push trigger when only part of the repo feeds the s
 
 ## Release shapes
 
-Which shape applies is decided by the repo type on the README badge (see the project-docs skill). A repo has exactly one type, at most one release shape, and releases deliverables of that type only: a library monorepo publishes several packages, a service repo publishes one image. A repo that needs a second service, or a service plus a published library, is split into two repos.
+Which shape applies is decided by the repo type on the README badge (Project Details §3; the shapes are Project Operations §7). A repo has exactly one type, at most one release shape, and releases deliverables of that type only: a library monorepo publishes several packages, a service repo publishes one image. A repo that needs a second service, or a service plus a published library, is split into two repos.
 
 ### Library — published package
 

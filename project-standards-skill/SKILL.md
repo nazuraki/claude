@@ -11,10 +11,16 @@ Two areas are owned by sibling skills and this skill defers to them rather than 
 
 | Area | Owning skill | Read before auditing |
 |------|--------------|----------------------|
-| Documentation, per the Project Documentation spec (`README.md`, `LICENSE`, `docs/PURPOSE.md`, `docs/requirements/`, other `docs/` detail directories and summary docs, monorepo package docs) | `/project-docs` | `~/.claude/skills/project-docs/SKILL.md` |
+| Documentation, per the Project Documentation and Project Details specs (`README.md` and its details line, `LICENSE`, `docs/PURPOSE.md`, `docs/requirements/`, other `docs/` detail directories and summary docs, monorepo package docs) | `/project-docs` | `~/.claude/skills/project-docs/SKILL.md` |
 | `Justfile` (required recipes, naming, structure, monorepo modules) | `/justfile` | `~/.claude/skills/justfile/SKILL.md` |
 
 If a rule here ever disagrees with the owning skill, the owning skill wins.
+
+The GitHub areas (CI workflows, GitHub settings, Security, Branch rules, Labels) apply the **Project Operations 1.0.0** spec, which builds on Project Details. Before auditing them, read its raw Markdown:
+
+    curl -fsSL https://lepid-labs.github.io/spec/project-operations/v1.0.0/index.md
+
+Use `curl` (or a local copy of `site/spec/project-operations/v1.0.0/index.md` in the lepid-labs.github.io checkout), not a summarizing fetch. Cite findings as `Ops §5.3` (section 5, rule 3). If a check below disagrees with the spec, the spec wins; if `https://lepid-labs.github.io/spec/` lists a newer version, tell the user and ask whether to audit against it. The `.gitignore`, Justfile, and agent-instruction areas are this skill's own standards, outside the spec.
 
 Two companion files sit beside this skill: [workflows.md](workflows.md) holds the workflow templates the CI area checks against, and [fixes.md](fixes.md) holds the commands Step 4 runs. Read each when you reach the step that needs it.
 
@@ -29,7 +35,7 @@ Two companion files sit beside this skill: [workflows.md](workflows.md) holds th
 
 If a path was given, use it. Otherwise use the current working directory. State the project being audited at the top of your report, with its type.
 
-Read the repo type from the root README type badge (`library`, `service`, `web app`, or `native app`; defined in §6 of the Project Documentation spec, which the project-docs skill loads). The type is a property of the repo as a whole, never of a package inside it, and it is the source of truth for what the repo releases: it decides which release shape applies and whether a Dockerfile and `publish.yml` are expected. When the badge is missing or names more than one type, infer the type from what the repo releases for the rest of the audit (a compiled binary target is a native app; server code whose main interface is an API is a service; a server or static build whose main interface is pages is a web app; published packages and no runnable deliverable is a library) and mark the report header `inferred`. The README check itself fails through the documentation area.
+Read the repo type from the root README type badge (`library`, `service`, `web app`, or `native app`; defined in §3 of the Project Details spec, which the project-docs skill loads). The type is a property of the repo as a whole, never of a package inside it, and it is the source of truth for what the repo releases: it decides which release shape applies and whether a Dockerfile and `publish.yml` are expected. When the badge is missing or names more than one type, infer the type from what the repo releases for the rest of the audit (a compiled binary target is a native app; server code whose main interface is an API is a service; a server or static build whose main interface is pages is a web app; published packages and no runnable deliverable is a library) and mark the report header `inferred`. The README check itself fails through the documentation area.
 
 Detect the GitHub repo identity by running:
 ```sh
@@ -232,8 +238,8 @@ Audited: <absolute path>
 Type: <library | service | web app | native app> (<from README badge | inferred>)
 
 ### README.md                    [PASS | FAIL | MISSING]
-- FAIL No status badge under the H1
-- FAIL No repo type badge after the status badge
+- FAIL Details line: no type badge before the status badge (Details §2.1)
+- FAIL Details line: CI badge on it; belongs after the description (Details §2.3)
 - OK   Has project name and description
 - FAIL Missing prerequisites section
 - OK   Quickstart command present (just dev)
