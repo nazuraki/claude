@@ -1,83 +1,122 @@
 # Project Docs Templates
 
-Templates used by the project-docs skill's `new` and fix steps. Keep `<!-- TODO: fill in -->` markers where content needs human input.
+Templates used by the project-docs skill's `new` and fix steps. Section references (`§2`) are to the Project
+Documentation 1.0.0 spec. Keep `<!-- TODO: fill in -->` markers where content needs human input.
 
-`README.md`:
+`README.md` (§2, §6):
 
 ```markdown
 # <project-name>
 
-![Status: <stage>](https://img.shields.io/badge/status-<stage>-<color>) ![Type: <type>](https://img.shields.io/badge/type-<type>-blueviolet)  <!-- exact markdown per stage and type: see SKILL.md -->
+![Status: <stage>](https://img.shields.io/badge/status-<stage>-<color>) ![Type: <type>](https://img.shields.io/badge/type-<type>-blueviolet)
 
 <one-sentence description>
+
+See [docs/PURPOSE.md](docs/PURPOSE.md) for why this project exists.
 
 ## Prerequisites
 
 - <runtime> <version>
-- Environment: `<VAR>` — <what it does>
+- `<VAR>`: <what it controls, its format, and its default if any>
 
 ## Quickstart
 
-    just install
-    just dev
-
-See [docs/PURPOSE.md](docs/PURPOSE.md) for why this project exists.
+    <install command>
+    <run command>
 
 ## License
 
-<license name> — see [LICENSE](LICENSE).
-<!-- private repo: "Proprietary — © <owner>. All rights reserved." and no LICENSE file -->
+<license name>; see [LICENSE](LICENSE).
+<!-- proprietary: "Proprietary: © <owner>, all rights reserved; see [LICENSE](LICENSE)." -->
 ```
 
-`docs/PURPOSE.md`:
+`LICENSE` for a proprietary project (§3); an open-source project uses the license's full text instead:
+
+```text
+Copyright (c) <year> <owner>. All rights reserved.
+
+No part of this repository may be copied, modified, or distributed without
+the prior written permission of <owner>.
+```
+
+`docs/PURPOSE.md` (§4):
 
 ```markdown
 # Purpose
 
-## Problem
-
-<!-- TODO: 1–3 paragraphs -->
-
-## Non-goals
-
-- <!-- TODO -->
+<!-- TODO: the problem being solved, in one to two sentences -->
 
 ## Audience
 
-<!-- TODO -->
+<!-- TODO: who the project is for -->
 ```
 
-`CONTEXT.md`:
+Requirements area file, `docs/requirements/<area>.md` (§5, §9):
 
 ```markdown
-# Context
+# <Area> requirements
 
-## Decisions
+<one sentence: what this area covers>
 
-<!-- Architectural choices not visible in code, and what was ruled out. Link ADRs in docs/decisions.md -->
+## RQ-001 <requirement title>
 
-## Rules and thresholds
+Status: draft
 
-<!-- Business rules; canonical definitions -->
-
-## Deployment
-
-<!-- Topology, how traffic arrives, what handles access control -->
-
-## Environment
-
-- `<VAR>` — <semantics>
-
-## External contracts
-
-<!-- Expected schemas and interfaces not yet implemented -->
-
-## Open questions
-
-- <!-- Never trim this section -->
+<!-- TODO: what the project must do or guarantee, and how to tell it does -->
 ```
 
-Summary doc (`docs/<area>.md`):
+Decision record, `docs/decisions/NNNN-<title>.md` (§7.4, §8.4):
+
+```markdown
+# NNNN <Title>
+
+Status: <open | proposed | accepted | superseded by NNNN>
+
+## Context
+
+<!-- The question, and the forces that make it one -->
+
+## Decision
+
+<!-- The choice made, or "Not yet made." with the options, while open -->
+
+## Consequences
+
+<!-- What follows from the choice, good and bad -->
+```
+
+`docs/open-questions.md` (§10.3, optional):
+
+```markdown
+# Open questions
+
+Questions not yet worth a decision record, one line each. A question that gets a record in
+[decisions.md](decisions.md) is removed from this list.
+
+- <!-- TODO -->
+```
+
+Runbook, `docs/runbooks/<procedure>.md` (§7):
+
+```markdown
+# <Procedure>
+
+<one sentence: when to run this>
+
+1. <!-- TODO: step -->
+```
+
+Other detail files (features, use cases, research, design, guides) (§7):
+
+```markdown
+# <Title>
+
+<one paragraph summary; research adds its date>
+
+<!-- body; link the requirements, use cases, or decisions this derives from -->
+```
+
+Summary doc, `docs/<area>.md` (§8):
 
 ```markdown
 # <Area>
@@ -89,18 +128,7 @@ Summary doc (`docs/<area>.md`):
 | [<title>](<area>/<file>.md) | <one sentence> | <status> |
 ```
 
-Detail file (any area; ADRs add **Status**, **Context**, **Decision**, **Consequences** sections):
-
-```markdown
-# <Title>
-
-**Status:** <status> · **Date:** <YYYY-MM-DD>
-**Related:** [<requirement>](../requirements/<file>.md), [<ADR>](../decisions/<file>.md)
-
-<!-- body -->
-```
-
-Monorepo package `README.md`:
+Monorepo package `README.md` (§11.6):
 
 ```markdown
 # <package-name>
@@ -113,7 +141,5 @@ Monorepo package `README.md`:
 
 ## Tasks
 
-    just <package> dev
-    just <package> test
+    <how to run this package's tasks>
 ```
-

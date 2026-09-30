@@ -6,6 +6,13 @@ Commands and templates for Step 4 of the project-standards skill. Substitute `{o
 
 Apply the project-docs skill's fix step (its templates, its `<!-- TODO: fill in -->` convention).
 
+## Agent instruction gaps
+
+Create a missing `CLAUDE.md` with three sections: a one-paragraph pointer to `docs/requirements.md` and
+`docs/decisions.md` (read before changing anything; record new requirements and decisions in the same change),
+`## Commands`, and `## Conventions`. In an existing file, replace restated rules, decisions, or project narrative with a
+link to the document that holds them, moving any content that has no home yet into that document first.
+
 ## Justfile gaps
 
 Apply the Justfile skill's fix step.

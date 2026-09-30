@@ -11,7 +11,7 @@ Two areas are owned by sibling skills and this skill defers to them rather than 
 
 | Area | Owning skill | Read before auditing |
 |------|--------------|----------------------|
-| Documentation (`README.md`, `docs/PURPOSE.md`, `CONTEXT.md`, `CLAUDE.md`, `LICENSE`, `docs/` detail directories and summary docs, monorepo package docs) | `/project-docs` | `~/.claude/skills/project-docs/SKILL.md` |
+| Documentation, per the Project Documentation spec (`README.md`, `LICENSE`, `docs/PURPOSE.md`, `docs/requirements/`, other `docs/` detail directories and summary docs, monorepo package docs) | `/project-docs` | `~/.claude/skills/project-docs/SKILL.md` |
 | `Justfile` (required recipes, naming, structure, monorepo modules) | `/justfile` | `~/.claude/skills/justfile/SKILL.md` |
 
 If a rule here ever disagrees with the owning skill, the owning skill wins.
@@ -29,7 +29,7 @@ Two companion files sit beside this skill: [workflows.md](workflows.md) holds th
 
 If a path was given, use it. Otherwise use the current working directory. State the project being audited at the top of your report, with its type.
 
-Read the repo type from the root README type badge (`library`, `service`, `web app`, or `native app`; defined in the project-docs skill). The type is a property of the repo as a whole, never of a package inside it, and it is the source of truth for what the repo releases: it decides which release shape applies and whether a Dockerfile and `publish.yml` are expected. When the badge is missing or names more than one type, infer the type from what the repo releases for the rest of the audit (a compiled binary target is a native app; server code whose main interface is an API is a service; a server or static build whose main interface is pages is a web app; published packages and no runnable deliverable is a library) and mark the report header `inferred`. The README check itself fails through the documentation area.
+Read the repo type from the root README type badge (`library`, `service`, `web app`, or `native app`; defined in §6 of the Project Documentation spec, which the project-docs skill loads). The type is a property of the repo as a whole, never of a package inside it, and it is the source of truth for what the repo releases: it decides which release shape applies and whether a Dockerfile and `publish.yml` are expected. When the badge is missing or names more than one type, infer the type from what the repo releases for the rest of the audit (a compiled binary target is a native app; server code whose main interface is an API is a service; a server or static build whose main interface is pages is a web app; published packages and no runnable deliverable is a library) and mark the report header `inferred`. The README check itself fails through the documentation area.
 
 Detect the GitHub repo identity by running:
 ```sh
@@ -47,7 +47,18 @@ Carry its findings into this report as three sections:
 
 - **README.md** — the root README checks
 - **docs/PURPOSE.md** — the purpose doc checks
-- **Other docs** — `CONTEXT.md`, `CLAUDE.md`, `LICENSE`, detail directories (`docs/requirements/`, `features/`, `use-cases/`, `research/`, `decisions/`, `design/`, `runbooks/`) and their summary docs, optional-doc triggers, "never" violations, and (monorepo) one line per package README
+- **Other docs** — `LICENSE`, `docs/requirements/`, the other detail directories (`features/`, `use-cases/`, `research/`, `decisions/`, `design/`, `runbooks/`, `guides/`) and their summary docs, `docs/open-questions.md`, a catch-all `CONTEXT.md` (flagged, spec §1.8), optional-doc triggers, prohibited items, and (monorepo) one line per package README
+
+#### Agent instructions
+
+Agent instruction files are a repository standard, not documentation, so this skill owns them.
+
+- `CLAUDE.md` exists at the root
+- It holds agent instructions only: commands, conventions, guardrails. No project narrative
+- It links to the project's documents (`docs/requirements.md`, `docs/decisions.md`, runbooks) rather than restating them; restated rules or decisions are a FAIL
+- It does not point at a `CONTEXT.md`
+- In a monorepo, a package `CLAUDE.md` adds to the root one and never repeats it
+- The same checks apply to `AGENTS.md` if present
 
 #### .gitignore
 
@@ -233,11 +244,15 @@ Type: <library | service | web app | native app> (<from README badge | inferred>
 ...
 
 ### Other docs                   [PASS | FAIL | MISSING]
-- OK   CONTEXT.md present with open-questions section
-- FAIL CLAUDE.md contains project narrative (belongs in CONTEXT.md)
-- OK   LICENSE present
+- OK   LICENSE present (all rights reserved, owner named)
+- MISSING docs/requirements/ (spec §5.1)
+- FAIL CONTEXT.md is a catch-all context file (spec §1.8); split it with /project-docs
 - FAIL docs/decisions.md missing entry for 0003-adopt-pnpm.md
 - FAIL apps/web/README.md missing        (monorepo only)
+
+### Agent instructions           [PASS | FAIL | MISSING]
+- OK   CLAUDE.md present
+- FAIL CLAUDE.md restates the build rules instead of linking docs/requirements.md
 
 ### .gitignore                   [PASS | FAIL | MISSING]
 ...
