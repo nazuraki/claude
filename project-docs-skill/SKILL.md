@@ -9,7 +9,7 @@ Applies two specifications to a project: audit it, scaffold it, or answer where 
 
 - **Project Documentation 1.1.0**: which documents a project carries and where they live. Cited as `§2.4` (section 2,
   rule 4).
-- **Project Details 1.0.0**: the README opening, meaning the details line (type, status, version badges), the
+- **Project Details 1.0.0**: the README opening, meaning the details line (type, status, version, license badges), the
   description, and where other badges go. It builds on Project Documentation. Cited as `Details §2.1`.
 
 The specs are the only source of the rules. This skill holds the procedure, the report format, and the templates.
@@ -48,10 +48,11 @@ owns, or task runners, which `/justfile` owns.
 | Check | Spec |
 |-------|------|
 | `README.md`: H1, one- or two-sentence description, prerequisites with every environment variable's meaning, install and run commands, link to `docs/PURPOSE.md`, license line linking `LICENSE` | §2 |
-| README details line: the paragraph right after the H1 holds the type badge, then the status badge, then a version badge if and only if the project publishes versioned releases, and nothing else; exact badge Markdown; `archived` is a status, not an extra badge | Details §1, §2, §3, §4 |
+| README details line: the paragraph right after the H1 holds the type badge, then the status badge, then a version badge if and only if the project publishes versioned releases, then optionally a license badge, and nothing else; exact badge Markdown; `archived` is a status, not an extra badge | Details §1, §2, §3, §4 |
 | Version badge: reads the version from where releases are published (shields.io, `label=version`), never a hand-edited static badge | Details §5 |
-| README description: the paragraph right after the details line, no badges in it; other badges (CI, license, conformance) only after it | Details §1 |
-| Monorepo badges: type badge only at the root; package details line only for an independently published package, and then status and version only | Details §6 |
+| License badge, if present: last on the details line and nowhere else; SPDX id with `--` for hyphens, or the fixed `proprietary` badge; matches `LICENSE` | Details §6 |
+| README description: the paragraph right after the details line, no badges in it; other badges (CI, conformance) only after it | Details §1 |
+| Monorepo badges: type badge only at the root; package details line only for an independently published package, and then status, version, and a license badge only if the package has its own `LICENSE` | Details §7 |
 | `LICENSE`: present at the root; full license text, or copyright owner and "all rights reserved"; parts under other terms named | §3 |
 | `docs/PURPOSE.md`: problem in one to two sentences; `Audience` section | §4 |
 | `docs/requirements/` and `docs/requirements.md`: present, at least one area file, requirements carry `RQ-nnn` IDs with status | §5, §9 |
@@ -97,8 +98,8 @@ Summary: X/Y checks passing
   write `<!-- TODO: fill in -->`.
 - When generating a summary doc, take each entry's title and one-sentence summary from the detail file's H1 and first
   paragraph.
-- When fixing badge order, move non-details badges (CI, license, conformance, a legacy `Archived` badge) to a line
-  after the description; replace a legacy `Archived` badge with the `archived` status (Details §4.1).
+- When fixing badge order, move a license badge to the end of the details line, and other badges (CI, conformance,
+  a legacy `Archived` badge) to a line after the description; replace a legacy `Archived` badge with the `archived` status (Details §4.1).
 - When the type badge is missing, infer the type from what the repo releases (a compiled binary is a native app; server
   code whose main interface is an API is a service; a server or static build whose main interface is pages is a web
   app; published packages with no runnable deliverable is a library). State the inference and confirm it before

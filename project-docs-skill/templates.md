@@ -4,17 +4,17 @@ Templates used by the project-docs skill's `new` and fix steps. Section referenc
 Documentation 1.1.0 spec, and `Details §n` to Project Details 1.0.0. Keep `<!-- TODO: fill in -->` markers where
 content needs human input.
 
-`README.md` (§2, Details §1–§5). Keep the version badge only if the project publishes versioned releases, using the
-source from Details §5:
+`README.md` (§2, Details §1–§6). Keep the version badge only if the project publishes versioned releases, using the
+source from Details §5. The license badge is optional; use the SPDX id (Details §6), or `proprietary-lightgrey`:
 
 ```markdown
 # <project-name>
 
-![Type: <type>](https://img.shields.io/badge/type-<type>-blueviolet) ![Status: <stage>](https://img.shields.io/badge/status-<stage>-<color>) ![Version](https://img.shields.io/github/v/release/<owner>/<repo>?label=version)
+![Type: <type>](https://img.shields.io/badge/type-<type>-blueviolet) ![Status: <stage>](https://img.shields.io/badge/status-<stage>-<color>) ![Version](https://img.shields.io/github/v/release/<owner>/<repo>?label=version) [![License: <spdx>](https://img.shields.io/badge/license-<spdx>-blue)](LICENSE)
 
 <one- or two-sentence description>
 
-<other badges, if any: CI, license, conformance>
+<other badges, if any: CI, conformance>
 
 See [docs/PURPOSE.md](docs/PURPOSE.md) for why this project exists.
 
