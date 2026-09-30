@@ -114,10 +114,10 @@ Secondary workflows are specified in [workflows.md](workflows.md). Check each on
 The repo type also caps what the repo publishes, and the workflows must agree with it:
 
 - A `library` repo publishes packages, one or several, and never a container image or installer
-- A `service` repo publishes exactly one container image; a `publish.yml` that builds several images is a FAIL, with the note that each extra image is a separate service and belongs in its own repo
+- A `service` repo publishes exactly one container image (one image name; a multi-platform image such as `linux/amd64` + `linux/arm64` is still one image, Ops §7.5). A `publish.yml` that pushes several image names, or per-platform names or tags instead of one multi-platform image, is a FAIL, with the note that each extra image is a separate service and belongs in its own repo
 - A `web app` repo deploys one UI, as one image or one Pages site
 - A `native app` repo builds one application's installers, across platforms
-- Workflows that publish two kinds of deliverable (an image and a package, two images, a package and an installer) are a FAIL regardless of the badge, and the split belongs under Critical gaps
+- Workflows that publish two kinds of deliverable (an image and a package, two image names, a package and an installer) are a FAIL regardless of the badge, and the split belongs under Critical gaps
 
 Packages inside a monorepo do not change this: a service split into workspace packages still ships one image, and a library monorepo ships packages only.
 
