@@ -98,8 +98,8 @@ Summary: X/Y checks passing
   write `<!-- TODO: fill in -->`.
 - When generating a summary doc, take each entry's title and one-sentence summary from the detail file's H1 and first
   paragraph.
-- When fixing badge order, move a license badge to the end of the details line, and other badges (CI, conformance,
-  a legacy `Archived` badge) to a line after the description; replace a legacy `Archived` badge with the `archived` status (Details §4.1).
+- When fixing badge order, move a license badge to the end of the details line and other badges (CI, conformance) to
+  a line after the description. Replace a legacy `Archived` badge with the `archived` status (Details §4.1).
 - When the type badge is missing, infer the type from what the repo releases (a compiled binary is a native app; server
   code whose main interface is an API is a service; a server or static build whose main interface is pages is a web
   app; published packages with no runnable deliverable is a library). State the inference and confirm it before
