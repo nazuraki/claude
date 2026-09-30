@@ -238,7 +238,7 @@ on:
   workflow_dispatch:     # manual release; always allowed
 ```
 
-Neither trigger is a FAIL; a `release.yml` with neither is. It computes the next version from the Conventional Commit titles since the last tag, writes the bump commit `chore(release): vX.Y.Z`, tags, and creates the GitHub release. A separate `publish.yml` on `v*` tags publishes the package with provenance. In a library monorepo the same tag publishes every publishable package at that version.
+Either trigger passes the audit; a `release.yml` with neither is a FAIL. It computes the next version from the Conventional Commit titles since the last tag, writes the bump commit `chore(release): vX.Y.Z`, tags, and creates the GitHub release. A separate `publish.yml` on `v*` tags publishes the package with provenance. In a library monorepo the same tag publishes every publishable package at that version.
 
 - `permissions: contents: write`; `concurrency: { group: release, cancel-in-progress: false }`
 - The bump commit is pushed with an admin token stored as `RELEASE_TOKEN`, which uses the ruleset's admin bypass. Guard the job with `if: github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'chore(release):')` so the bump does not release itself.
