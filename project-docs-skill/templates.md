@@ -4,8 +4,8 @@ Templates used by the project-docs skill's `new` and fix steps. Section referenc
 Documentation 1.1.0 spec, and `Details §n` to Project Details 1.0.0. Keep `<!-- TODO: fill in -->` markers where
 content needs human input.
 
-`README.md` (§2, Details §1–§6). Keep the version badge only if the project publishes versioned releases, using the
-source from Details §5. The license badge is optional; use the SPDX id (Details §6), or `proprietary-lightgrey`:
+`README.md` (§2, Details §1–§6). Keep the version badge only for a library or native app that publishes versioned
+releases, using the source from Details §5; a private repo uses the static `version-<version>-blue` badge. The license badge is optional; use the SPDX id (Details §6), or `proprietary-lightgrey`:
 
 ```markdown
 # <project-name>

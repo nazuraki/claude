@@ -48,8 +48,8 @@ owns, or task runners, which `/justfile` owns.
 | Check | Spec |
 |-------|------|
 | `README.md`: H1, one- or two-sentence description, prerequisites with every environment variable's meaning, install and run commands, link to `docs/PURPOSE.md`, license line linking `LICENSE` | §2 |
-| README details line: the paragraph right after the H1 holds the type badge, then the status badge, then a version badge if and only if the project publishes versioned releases, then optionally a license badge, and nothing else; exact badge Markdown; `archived` is a status, not an extra badge | Details §1, §2, §3, §4 |
-| Version badge: reads the version from where releases are published (shields.io, `label=version`), never a hand-edited static badge | Details §5 |
+| README details line: the paragraph right after the H1 holds the type badge, then the status badge, then a version badge if and only if the type is library or native app and it publishes versioned releases (never for a service or web app), then optionally a license badge, and nothing else; exact badge Markdown; `archived` is a status, not an extra badge | Details §1, §2, §3, §4 |
+| Version badge: public release source → the shields.io badge that reads it (`label=version`); private source (private repo releases, private GitHub Packages) → static `version-<version>-blue` badge, and the release workflow rewrites it in the release commit (check with `/project-standards`) | Details §5 |
 | License badge, if present: last on the details line and nowhere else; SPDX id with `--` for hyphens, or the fixed `proprietary` badge; matches `LICENSE` | Details §6 |
 | README description: the paragraph right after the details line, no badges in it; other badges (CI, conformance) only after it | Details §1 |
 | Monorepo badges: type badge only at the root; package details line only for an independently published package, and then status, version, and a license badge only if the package has its own `LICENSE` | Details §7 |
