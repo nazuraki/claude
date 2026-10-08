@@ -53,7 +53,7 @@ Carry its findings into this report as three sections:
 
 - **README.md** — the root README checks
 - **docs/PURPOSE.md** — the purpose doc checks
-- **Other docs** — `LICENSE`, `docs/requirements/`, the other detail directories (`features/`, `use-cases/`, `research/`, `decisions/`, `design/`, `runbooks/`, `guides/`) and their summary docs, `docs/open-questions.md`, a catch-all `CONTEXT.md` (flagged, spec §1.8), optional-doc triggers, prohibited items, and (monorepo) one line per package README
+- **Other docs** — `LICENSE`, `docs/requirements/`, the other detail directories (`features/`, `use-cases/`, `research/`, `decisions/`, `design/`, `runbooks/`, `guides/`) and their summary docs, `docs/open-questions.md`, a catch-all `CONTEXT.md` (flagged, spec §1.9), optional-doc triggers, prohibited items, and (monorepo) one line per package README
 
 #### Agent instructions
 
@@ -251,7 +251,7 @@ Type: <library | service | web app | native app> (<from README badge | inferred>
 ### Other docs                   [PASS | FAIL | MISSING]
 - OK   LICENSE present (all rights reserved, owner named)
 - MISSING docs/requirements/ (spec §5.1)
-- FAIL CONTEXT.md is a catch-all context file (spec §1.8); split it with /project-docs
+- FAIL CONTEXT.md is a catch-all context file (spec §1.9); split it with /project-docs
 - FAIL docs/decisions.md missing entry for 0003-adopt-pnpm.md
 - FAIL apps/web/README.md missing        (monorepo only)
 

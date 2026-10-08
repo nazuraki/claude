@@ -1,12 +1,14 @@
 # Project Docs Templates
 
 Templates used by the project-docs skill's `new` and fix steps. Section references (`§2`) are to the Project
-Documentation 1.1.0 spec, and `Details §n` to Project Details 1.0.0. Keep `<!-- TODO: fill in -->` markers where
-content needs human input.
+Documentation 1.2.0 spec, and `Details §n` to Project Details 1.1.0. Keep `<!-- TODO: fill in -->` markers where
+content needs human input. A detail file may leave out a section that does not apply, add its own after the listed
+ones, and, when short, cover the sections in order as plain paragraphs (§6.7).
 
 `README.md` (§2, Details §1–§6). Keep the version badge only for a library or native app that publishes versioned
 releases, using the source from Details §5; a private repo uses the static `version-<version>-blue` badge. The
-license badge is optional; use the SPDX id (Details §6), or `proprietary-lightgrey`:
+license badge is optional; use the SPDX id (Details §6), or `proprietary-lightgrey`. A monorepo root adds a package
+table and carries no package-specific instructions (§10.2):
 
 ```markdown
 # <project-name>
@@ -28,6 +30,12 @@ See [docs/PURPOSE.md](docs/PURPOSE.md) for why this project exists.
 
     <install command>
     <run command>
+
+## Packages
+
+| Package | Purpose |
+|---------|---------|
+| [<name>](<path>/README.md) | <one line> |
 
 ## License
 
@@ -56,7 +64,7 @@ the prior written permission of <owner>.
 <!-- TODO: who the project is for -->
 ```
 
-Requirements area file, `docs/requirements/<area>.md` (§5, §9):
+Requirements area file, `docs/requirements/<area>.md` (§6.8, §8.3):
 
 ```markdown
 # <Area> requirements
@@ -67,10 +75,70 @@ Requirements area file, `docs/requirements/<area>.md` (§5, §9):
 
 Status: draft
 
-<!-- TODO: what the project must do or guarantee, and how to tell it does -->
+<!-- TODO: one checkable obligation; thresholds as a number and a unit. Acceptance criteria where one sentence
+cannot carry them; a link to the decision that set it, if one did -->
 ```
 
-Decision record, `docs/decisions/NNNN-<title>.md` (§7.4, §8.4):
+Feature, `docs/features/<feature>.md` (§6.9):
+
+```markdown
+# <Feature name>
+
+<!-- TODO: what it lets a user do, and for whom. Link its design and any mockups -->
+
+## Behaviour
+
+## Scope
+
+## Out of scope
+
+## Satisfies
+
+- RQ-<nnn>, UC-<nnn>
+```
+
+Use case, `docs/use-cases/<actor-goal>.md` (§6.10, §8.3):
+
+```markdown
+# UC-001 <actor goal>
+
+<!-- TODO: the primary actor, their goal, and what starts the interaction -->
+
+## Preconditions
+
+## Primary flow
+
+1. <!-- TODO: one action by the actor or the system, by intent, not interface -->
+
+## Alternate flows
+
+- **2a.** <!-- TODO: the branch, and where it rejoins or ends -->
+
+## Postconditions
+```
+
+Research document, `docs/research/<topic>.md` (§6.11):
+
+```markdown
+# <Topic>
+
+Status: open
+Date: <YYYY-MM-DD>
+
+## Question
+
+<!-- TODO: what it set out to answer, and the decision or requirement it serves -->
+
+## Method
+
+## Findings
+
+## Recommendation
+
+<!-- What the findings suggest, and a link to the decision record that takes it up -->
+```
+
+Decision record, `docs/decisions/NNNN-<title>.md` (§6.4, §6.12):
 
 ```markdown
 # NNNN <Title>
@@ -79,49 +147,78 @@ Status: <open | proposed | accepted | superseded by NNNN>
 
 ## Context
 
-<!-- The question, and the forces that make it one -->
+<!-- The question, the forces that make it one, and the research it relies on -->
+
+## Options
+
+<!-- Each alternative, with what favours and what counts against it -->
 
 ## Decision
 
-<!-- The choice made, or "Not yet made." with the options, while open -->
+<!-- The choice, stated so it can be followed, or "No choice is made yet." while open -->
 
 ## Consequences
 
-<!-- What follows from the choice, good and bad -->
+<!-- What follows, good and bad: the work it creates, what it rules out, what it makes harder -->
+
+## History
+
+<!-- Optional: one line per earlier decision, "<YYYY-MM-DD>: <what it decided>" -->
 ```
 
-`docs/open-questions.md` (§10.3, optional):
+Design, `docs/design/<title>.md` (§6.13):
 
 ```markdown
-# Open questions
+# <Change or component>
 
-Questions not yet worth a decision record, one line each. A question that gets a record in
-[decisions.md](decisions.md) is removed from this list.
+<!-- TODO: what is being built, and the requirements or feature it serves -->
 
-- <!-- TODO -->
+## Approach
+
+## Alternatives
+
+## Interfaces
+
+<!-- Link the code or schema that defines a contract rather than copying it -->
+
+## Risks
 ```
 
-Runbook, `docs/runbooks/<procedure>.md` (§7):
+Runbook, `docs/runbooks/<procedure>.md` (§6.14). One runbook describes the deployment topology; the others link it:
 
 ```markdown
-# <Procedure>
+# <Do the procedure>
 
-<one sentence: when to run this>
+<one sentence: when to run it and what it achieves>
 
-1. <!-- TODO: step -->
+## Prerequisites
+
+<!-- Access, tools, approvals; name secrets and roles, never their values -->
+
+## Steps
+
+1. <!-- TODO: one action, the exact command, and what the reader sees when it worked -->
+
+## Verify
+
+## Recovery
 ```
 
-Other detail files (features, use cases, research, design, guides) (§7):
+Guide, `docs/guides/<topic>.md` (§6.15):
 
 ```markdown
-# <Title>
+# <Task or topic, as a user would put it>
 
-<one paragraph summary; research adds its date>
+<!-- TODO: who the guide is for, and what they can do once they have followed it -->
 
-<!-- body; link the requirements, use cases, or decisions this derives from -->
+## Prerequisites
+
+<!-- Only what goes beyond the README's prerequisites -->
+
+## <The task's own sections>
 ```
 
-Summary doc, `docs/<area>.md` (§8):
+Summary doc, `docs/<area>.md` (§7):
 
 ```markdown
 # <Area>
@@ -133,7 +230,46 @@ Summary doc, `docs/<area>.md` (§8):
 | [<title>](<area>/<file>.md) | <one sentence> | <status> |
 ```
 
-Monorepo package `README.md` (§11.6):
+`docs/open-questions.md` (§9.3, optional):
+
+```markdown
+# Open questions
+
+Questions not yet worth a decision record, one line each. A question that gets a record in
+[decisions.md](decisions.md) is removed from this list.
+
+- <!-- TODO -->
+```
+
+`CONTRIBUTING.md` (§9.2), when the project accepts outside contributions:
+
+```markdown
+# Contributing
+
+<!-- TODO: which contributions are welcome, and which are not -->
+
+## Development setup
+
+<!-- Beyond the README's prerequisites and install commands, which this links to -->
+
+## Checks
+
+<!-- The lint, type-check and test commands CI runs, and which must pass -->
+
+## Making a change
+
+<!-- Branching, the commit or PR title convention, and what a change includes: tests, and the docs it affects -->
+
+## Reporting issues
+
+<!-- Where to report bugs and request features, and the private channel for security issues -->
+
+## License
+
+<!-- The terms contributions are accepted under, and any sign-off they need -->
+```
+
+Monorepo package `README.md` (§10.6):
 
 ```markdown
 # <package-name>
