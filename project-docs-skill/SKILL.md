@@ -7,7 +7,7 @@ description: "Define, scaffold, or audit a project's documentation against the P
 
 Applies two specifications to a project: audit it, scaffold it, or answer where something belongs.
 
-- **Project Documentation 1.2.0**: which documents a project carries, where they live, and the shape of each kind of
+- **Project Documentation 2.0.0**: which documents a project carries, where they live, and the shape of each kind of
   detail file. Cited as `§2.4` (section 2, rule 4).
 - **Project Details 1.1.0**: the README opening, meaning the details line (type, status, version, license badges), the
   description, and where other badges go. Cited as `Details §2.1`.
@@ -18,7 +18,7 @@ The specs are the only source of the rules. This skill holds the procedure, the 
 
 Before any audit, scaffold, or placement answer, read both specs' raw Markdown:
 
-    curl -fsSL https://lepid-labs.github.io/spec/project-documentation/v1.2.0/index.md
+    curl -fsSL https://lepid-labs.github.io/spec/project-documentation/v2.0.0/index.md
     curl -fsSL https://lepid-labs.github.io/spec/project-details/v1.1.0/index.md
 
 Use `curl` (or read local copies under `site/spec/` in the lepid-labs.github.io checkout), not a summarizing web
@@ -59,11 +59,11 @@ owns, or task runners, which `/justfile` owns.
 | `docs/requirements/` and `docs/requirements.md`: present, at least one area file, requirements carry `RQ-nnn` IDs with status | §5, §8 |
 | Knowledge in its home, per the table in §1.8; derivable content absent; documents under about 200 lines | §1 |
 | `CONTEXT.md` or another catch-all context file: flag it, and map each part of it to its home | §1.9 |
-| Detail directories: created only when their trigger applies; flag a directory whose trigger clearly applies but is absent (a deployed project with no runbooks) | §6.1 |
+| Detail directories: created only when their trigger applies; flag a directory whose trigger clearly applies but is absent (a deployed project with no runbooks). Never flag a missing `docs/decisions/` from the code or its history: its trigger is a design question being asked (§6.4) | §6.1 |
 | Detail files link what they derive from or satisfy; research recommends but never decides; mockups only under `docs/design/mockups/`, each linked | §6.2, §6.3, §6.6 |
 | Detail-file shapes, per kind: requirement area §6.8, feature §6.9, use case §6.10, research (`Status`, `Date`, Question, Method, Findings, Recommendation) §6.11, decision (`Status`, Context, Options, Decision, Consequences) §6.12, design (Approach, Alternatives, Interfaces, Risks) §6.13, runbook (Prerequisites, Steps, Verify, Recovery) §6.14, guide §6.15. A departure is a WARN, not a FAIL | §6.7–§6.15 |
 | Summary docs: one per detail directory, opening paragraph, every file listed, no dangling links, status where the type has one | §7 |
-| Decision records: numbering, status values (`open`, `proposed`, `accepted`, `superseded by NNNN`); a changed decision revised in its own record, with an optional `History` section, rather than replaced by a new one | §6.4, §6.12, §7.4, §11.3 |
+| Decision records: each answers a design question at a pivot point and links the research behind it; WARN on a record that cites no research or records a local choice, an inherited standard, a convention, or an implementation detail. Numbering, status values (`open`, `proposed`, `accepted`, `superseded by NNNN`); a changed decision revised in its own record, with an optional `History` section, rather than replaced by a new one | §6.4, §6.12, §7.4, §11.3 |
 | Stable IDs: `RQ-nnn` as `## RQ-nnn <title>` with status on the next line, `UC-nnn` in the use case H1, one sequence each, never reused | §8 |
 | `docs/open-questions.md`, if present: one line per question, none that already has a decision record | §9.3 |
 | `CHANGELOG.md` and `CONTRIBUTING.md` where their triggers apply; `CONTRIBUTING.md` follows its shape (Development setup, Checks, Making a change, Reporting issues with a private security channel, License) | §9 |
@@ -74,7 +74,7 @@ owns, or task runners, which `/justfile` owns.
 4. Report in this format:
 
 ```
-## Project docs audit: <project>   (<single project | monorepo, N packages>) — docs 1.2.0, details 1.1.0
+## Project docs audit: <project>   (<single project | monorepo, N packages>) — docs 2.0.0, details 1.1.0
 
 ### Root
 OK       README.md
@@ -111,11 +111,14 @@ Summary: X/Y checks passing, Z warnings
   writing the badge. Never write two types; if the repo releases two kinds of thing, say so and leave the badge to the
   user.
 - When splitting a `CONTEXT.md`, move each part to its home per §1.8: rules and thresholds to requirements,
-  architectural choices to decision records (a choice that changes an existing decision revises that record and adds
-  a `History` line, §6.4), open questions to open decision records or `docs/open-questions.md`, deployment topology to
-  a runbook, environment variable meanings to the README, development setup to `CONTRIBUTING.md`, and the reasoning
-  behind one piece of code to a design's Alternatives or a comment in that code. Then delete the file and repoint
-  anything that linked to it.
+  design decisions that meet §6.4 to decision records (a choice that changes an existing decision revises that record
+  and adds a `History` line), open questions to open decision records or `docs/open-questions.md`, deployment
+  topology to a runbook, environment variable meanings to the README, development setup to `CONTRIBUTING.md`, and
+  the reasoning behind one piece of code to a design's Alternatives or a comment in that code. Then delete the file
+  and repoint anything that linked to it.
+- Never write decision records reconstructed from the code, commits, or pull requests (§6.4). If a past design
+  question looks worth a record, ask the user whether its research or discussion survives, and write the record only
+  from that.
 - When splitting a flat document into a detail directory, renumber `UC-n`/`DD-n` style IDs into the spec's form
   without changing the numbers, and rewrite each file to its shape (§6.7–§6.15).
 - Before moving or renaming any document, search the repo for paths into `docs/`: build and site scripts, CI
