@@ -1,7 +1,7 @@
 # Project Docs Templates
 
 Templates used by the project-docs skill's `new` and fix steps. Section references (`§2`) are to the Project
-Documentation 1.2.0 spec, and `Details §n` to Project Details 1.1.0. Keep `<!-- TODO: fill in -->` markers where
+Documentation 1.3.0 spec, and `Details §n` to Project Details 1.1.0. Keep `<!-- TODO: fill in -->` markers where
 content needs human input. A detail file may leave out a section that does not apply, add its own after the listed
 ones, and, when short, cover the sections in order as plain paragraphs (§6.7).
 
@@ -147,7 +147,7 @@ Status: <open | proposed | accepted | superseded by NNNN>
 
 ## Context
 
-<!-- The question, the forces that make it one, and the research it relies on -->
+<!-- The design question, the forces that make it one, and a link to the research it relies on -->
 
 ## Options
 
