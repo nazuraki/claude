@@ -7,7 +7,7 @@ description: "Define, scaffold, or audit a project's documentation against the P
 
 Applies two specifications to a project: audit it, scaffold it, or answer where something belongs.
 
-- **Project Documentation 1.3.0**: which documents a project carries, where they live, and the shape of each kind of
+- **Project Documentation 2.0.0**: which documents a project carries, where they live, and the shape of each kind of
   detail file. Cited as `§2.4` (section 2, rule 4).
 - **Project Details 1.1.0**: the README opening, meaning the details line (type, status, version, license badges), the
   description, and where other badges go. Cited as `Details §2.1`.
@@ -18,7 +18,7 @@ The specs are the only source of the rules. This skill holds the procedure, the 
 
 Before any audit, scaffold, or placement answer, read both specs' raw Markdown:
 
-    curl -fsSL https://lepid-labs.github.io/spec/project-documentation/v1.3.0/index.md
+    curl -fsSL https://lepid-labs.github.io/spec/project-documentation/v2.0.0/index.md
     curl -fsSL https://lepid-labs.github.io/spec/project-details/v1.1.0/index.md
 
 Use `curl` (or read local copies under `site/spec/` in the lepid-labs.github.io checkout), not a summarizing web
@@ -74,7 +74,7 @@ owns, or task runners, which `/justfile` owns.
 4. Report in this format:
 
 ```
-## Project docs audit: <project>   (<single project | monorepo, N packages>) — docs 1.3.0, details 1.1.0
+## Project docs audit: <project>   (<single project | monorepo, N packages>) — docs 2.0.0, details 1.1.0
 
 ### Root
 OK       README.md
